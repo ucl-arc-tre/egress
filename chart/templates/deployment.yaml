@@ -20,7 +20,6 @@ spec:
       containers:
         - name: "app"
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
-
           securityContext:
             privileged: false
             runAsUser: 1000
@@ -30,6 +29,10 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["all"]
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
           env:
             - name: DEBUG
               value: "{{ .Values.debug }}"

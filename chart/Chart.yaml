@@ -2,4 +2,4 @@ apiVersion: v2
 name: egress
 description: Helm chart for deploying the UCL ARC TRE egress service
 type: application
-version: 0.0.0
+version: 0.1.0
