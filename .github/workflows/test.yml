@@ -24,7 +24,6 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    environment: e2e
     needs: [unit]
 
     permissions:

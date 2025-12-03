@@ -34,10 +34,13 @@ test-e2e: dev-k3d ## Run end-to-end tests
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
 	go test ./e2e/...
 
-dev: dev-k3d ## Deploy in dev
+dev: dev-k3d ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
+
+dev-destroy: ## Destroy the dev env
+	k3d cluster delete $(K3D_CLUSTER_NAME)
 
 dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
