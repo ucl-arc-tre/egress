@@ -1,0 +1,12 @@
+image:
+  repository: localhost/ucl-arc-tre-egress
+  tag: release
+
+replicaCount: 1
+
+service:
+  type: NodePort
+  nodePort: 30001
+  port: 80
+
+debug: true

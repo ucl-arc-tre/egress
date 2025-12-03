@@ -1,0 +1,20 @@
+image:
+  repository: localhost/ucl-arc-tre-egress
+  tag: dev
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 2000m
+    memory: 1024Mi
+
+terminationGracePeriodSeconds: 1
+
+service:
+  type: NodePort
+  nodePort: 30001
+  port: 80
+
+dev: true
+debug: true
