@@ -22,7 +22,7 @@ help: ## Show this help
         | column -t -s '|'
 	@echo
 
-generate:  ## Run code generation
+codegen:  ## Run code generation
 	go generate ./...
 
 test-unit:  ## Run unit tests
@@ -38,7 +38,7 @@ dev: dev-k3d ## Deploy in dev
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
-	
+
 dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
 

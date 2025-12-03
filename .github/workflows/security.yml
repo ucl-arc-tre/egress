@@ -1,0 +1,25 @@
+---
+name: Security
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gosec:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: "./..."
