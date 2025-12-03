@@ -1,0 +1,27 @@
+openapi: "3.0.0"
+info:
+  version: 0.1.0
+  title: ucl-arc-tre-egress
+  description: UCL ARC TRE Egress API
+servers:
+  - url: /v0
+paths:
+  /hello:
+    get:
+      summary: Ping
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hello"
+components:
+  schemas:
+    Hello:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string

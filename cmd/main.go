@@ -1,0 +1,26 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/ucl-arc-tre/egress/internal/config"
+	"github.com/ucl-arc-tre/egress/internal/handler"
+	"github.com/ucl-arc-tre/egress/internal/openapi"
+	"github.com/ucl-arc-tre/egress/internal/router"
+
+	"github.com/ucl-arc-tre/x/pkg/graceful"
+)
+
+func main() {
+	router := router.New()
+	openapi.RegisterHandlersWithOptions(router, handler.New(), openapi.GinServerOptions{
+		BaseURL: config.BaseURL,
+	})
+
+	server := &http.Server{
+		Addr:              config.ServerAddress(),
+		Handler:           router.Handler(),
+		ReadHeaderTimeout: config.ReadHeaderTimeout,
+	}
+	graceful.Serve(server, config.ServerShutdownDuration)
+}
