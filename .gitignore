@@ -1,0 +1,9 @@
+tmp*
+bin
+build
+.DS_Store
+*.bkp
+*.dtmp
+config*.yaml
+!config*.sample.yaml
+.vscode
