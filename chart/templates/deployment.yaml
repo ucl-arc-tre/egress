@@ -20,7 +20,7 @@ spec:
       containers:
         - name: "app"
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
-          
+
           securityContext:
             privileged: false
             runAsUser: 1000
