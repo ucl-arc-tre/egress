@@ -1,0 +1,27 @@
+image:
+  repository: ghcr.io/ucl-arc-tre/egress
+  # Overrides the image tag whose default is the chart appVersion
+  tag: null
+
+replicaCount: 1
+
+# Pod resources
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+terminationGracePeriodSeconds: 30
+
+# The Kubernetes Service that clients can connect to.
+service:
+  type: ClusterIP
+  nodePort: null
+  port: 80
+
+# Is this a development deployment. If so then will expect to be
+# able to mount in this repository under /repo
+dev: false
+
+# Should debug logs be enabled
+debug: false

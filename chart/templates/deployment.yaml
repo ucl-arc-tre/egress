@@ -1,0 +1,84 @@
+{{- $name := .Release.Name -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    "app.kubernetes.io/name": {{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      "app.kubernetes.io/name": {{ $name }}
+  template:
+    metadata:
+      labels:
+        "app.kubernetes.io/name": {{ $name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: "app"
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          securityContext:
+            privileged: false
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["all"]
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+          env:
+            - name: DEBUG
+              value: "{{ .Values.debug }}"
+            - name: PORT
+              value: "{{ template "container_port" . }}"
+          ports:
+            - name: http
+              containerPort: {{ template "container_port" . }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          {{- if .Values.dev }}
+          volumeMounts:
+            - name: repo
+              mountPath: /repo
+              readOnly: false
+            - name: tmp
+              mountPath: /tmp
+              readOnly: false
+            - name: gopkg
+              mountPath: /go/pkg
+            - name: cache
+              mountPath: /home/user/.cache
+          {{- end }}
+      {{- if .Values.dev }}
+      volumes:
+        - name: repo
+          hostPath:
+             path: "/repo"
+             type: DirectoryOrCreate
+        - name: tmp
+          emptyDir: {}
+        - name: gopkg
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+      {{- end }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault

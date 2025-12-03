@@ -1,0 +1,11 @@
+tmp*
+bin
+build
+.DS_Store
+*.bkp
+*.dtmp
+kubeconfig*
+config*.yaml
+!config*.sample.yaml
+.vscode
+*.tgz
