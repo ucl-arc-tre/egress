@@ -19,7 +19,7 @@ on top of a storage backend to track file approvals prior to download.
 
 ## Contributing
 
-Contributions are very welcome either. To suggest a change please:
+Contributions are very welcome. To suggest a change please:
 
 - Fork this repository and create a branch.
 - Run `pre-commit install` to install [pre-commit](https://pre-commit.com/).
