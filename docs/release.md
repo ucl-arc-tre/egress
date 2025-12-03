@@ -2,7 +2,7 @@
 
 To create a new release
 
-1. Update the chart and appVersion in [Chart.yaml](../chart/Chart.yaml)
+1. Update the chart and appVersion in [Chart.yaml](../chart/Chart.yaml), and the [README](../README.md)
 2. Merge the PR
 3. Push the new tag with e.g.
 
