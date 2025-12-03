@@ -1,3 +1,3 @@
 # Documentation
 
-- [Release](./relase.md)
+- [Release](./release.md)
