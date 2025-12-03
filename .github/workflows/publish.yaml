@@ -1,0 +1,31 @@
+---
+name: Publish
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Login
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | \
+            helm registry login ${{ env.REGISTRY }}/${{ github.repository_owner }} --username ${{ github.actor }} --password-stdin
+
+      - name: Package and push
+        working-directory: ./chart
+        run: |
+          helm package .
+          helm push *.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts

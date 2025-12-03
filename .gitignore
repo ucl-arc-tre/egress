@@ -8,3 +8,4 @@ kubeconfig*
 config*.yaml
 !config*.sample.yaml
 .vscode
+*.tgz

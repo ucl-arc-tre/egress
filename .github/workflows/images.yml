@@ -6,8 +6,6 @@ on:
       - "main"
     tags:
       - "*"
-    paths-ignore:
-      - "docs/**"
 
 env:
   REGISTRY: ghcr.io
@@ -46,4 +44,4 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          target: ${{ matrix.name }}-release
+          target: release
