@@ -67,3 +67,5 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
 	$(call assert_command_exists, k3d, "Please install k3d: https://k3d.io/stable/#installation")
+
+.SILENT:  # all targets
