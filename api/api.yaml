@@ -3,25 +3,188 @@ info:
   version: 0.1.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
+  license:
+    name: BSD-3-Clause
+    url: https://opensource.org/license/bsd-3-clause
 servers:
   - url: /v0
 paths:
-  /hello:
+  /{project-id}/files:
     get:
-      summary: Ping
+      summary: List requested files
+      parameters: 
+        - $ref: '#/components/parameters/ProjectIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListFilesRequest'
       responses:
-        "200":
-          description: OK
+        '200':
+          description: Returns requested list of files
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Hello"
+                $ref: '#/components/schemas/FileListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /{project-id}/files/{file-id}/approve:
+    put:
+      summary: Approve file
+      parameters:
+        - $ref: '#/components/parameters/ProjectIdParam'
+        - $ref: '#/components/parameters/FileIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveFileRequest'
+      responses:
+        '204':
+          description: File successfully approved
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /{project-id}/files/{file-id}:
+    get:
+      summary: Download approved file
+      parameters:
+        - $ref: '#/components/parameters/ProjectIdParam'
+        - $ref: '#/components/parameters/FileIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadFileRequest'
+      responses:
+        '200':
+          description: File content returned successfully
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
+  parameters:
+    ProjectIdParam:
+      name: project-id
+      in: path
+      required: true
+      description: Unique project identifier
+      schema:
+        type: string
+
+    FileIdParam:
+      name: file-id
+      in: path
+      required: true
+      description: Unique file identifier
+      schema:
+        type: string
+
   schemas:
-    Hello:
+    ListFilesRequest:
       type: object
       required:
+        - file_location
+      properties:
+        file_location:
+          type: string
+          description: Location (i.e. path) of files to list
+
+    FileListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/FileMetadata'
+
+    FileMetadata:
+      type: object
+      required:
+        - file_name
+        - id
+        - size
+        - approvals
+      properties:
+        file_name:
+          type: string
+          description: Name of file
+        id:
+          type: string
+          description: Unique file identifier
+        size:
+          type: integer
+          description: Size of file in bytes
+          minimum: 0
+        approvals:
+          type: array
+          description: User ids of granted approvals
+          items:
+            type: string
+
+    ApproveFileRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: User id of approver
+
+    DownloadFileRequest:
+      type: object
+      required:
+        - required_approvals
+        - files_location
+        - max_file_size
+      properties:
+        required_approvals:
+          type: integer
+          description: Min number of approvals required to egress
+          minimum: 1
+        files_location:
+          type: string
+          description: Location (i.e. path) of file to egress
+        max_file_size:
+          type: integer
+          description: Maximum allowed file size in bytes
+          minimum: 0
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
         - message
       properties:
+        error:
+          type: string
+          description: Error type
+          example: "BAD_REQUEST"
         message:
           type: string
+          description: Descriptive error message
+          example: "Invalid file-id parameter"
+
+  responses:
+    BadRequest:
+      description: Bad request; invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: File not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
