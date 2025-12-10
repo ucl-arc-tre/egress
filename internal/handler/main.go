@@ -13,6 +13,14 @@ func New() *Handler {
 	return &Handler{}
 }
 
-func (h *Handler) GetHello(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, openapi.Hello{Message: "world"})
+func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
+	ctx.Status(http.StatusNotImplemented)
+}
+
+func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
+	ctx.Status(http.StatusNotImplemented)
+}
+
+func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
+	ctx.Status(http.StatusNotImplemented)
 }
