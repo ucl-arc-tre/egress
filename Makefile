@@ -32,6 +32,7 @@ test-e2e: dev-k3d ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
+	while ! nc -q0 localhost 8080 < /dev/null; do echo "Waiting..."; sleep 4; done
 	go test ./e2e/...
 
 dev: dev-k3d ## Deploy dev env
