@@ -8,24 +8,96 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
 )
 
-// Hello defines model for Hello.
-type Hello struct {
+// ApproveFileRequest defines model for ApproveFileRequest.
+type ApproveFileRequest struct {
+	// UserId User id of approver
+	UserId string `json:"user_id"`
+}
+
+// DownloadFileRequest defines model for DownloadFileRequest.
+type DownloadFileRequest struct {
+	// FilesLocation Location (i.e. path) of file to egress
+	FilesLocation string `json:"files_location"`
+
+	// MaxFileSize Maximum allowed file size in bytes
+	MaxFileSize int `json:"max_file_size"`
+
+	// RequiredApprovals Min number of approvals required to egress
+	RequiredApprovals int `json:"required_approvals"`
+}
+
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+	// Message Descriptive error message
 	Message string `json:"message"`
 }
 
+// FileListResponse defines model for FileListResponse.
+type FileListResponse = []FileMetadata
+
+// FileMetadata defines model for FileMetadata.
+type FileMetadata struct {
+	// Approvals User ids of granted approvals
+	Approvals []string `json:"approvals"`
+
+	// FileName Name of file
+	FileName string `json:"file_name"`
+
+	// Id Unique file identifier
+	Id string `json:"id"`
+
+	// Size Size of file in bytes
+	Size int `json:"size"`
+}
+
+// ListFilesRequest defines model for ListFilesRequest.
+type ListFilesRequest struct {
+	// FileLocation Location (i.e. path) of files to list
+	FileLocation string `json:"file_location"`
+}
+
+// FileIdParam defines model for FileIdParam.
+type FileIdParam = string
+
+// ProjectIdParam defines model for ProjectIdParam.
+type ProjectIdParam = string
+
+// BadRequest defines model for BadRequest.
+type BadRequest = ErrorResponse
+
+// NotFound defines model for NotFound.
+type NotFound = ErrorResponse
+
+// GetProjectIdFilesJSONRequestBody defines body for GetProjectIdFiles for application/json ContentType.
+type GetProjectIdFilesJSONRequestBody = ListFilesRequest
+
+// GetProjectIdFilesFileIdJSONRequestBody defines body for GetProjectIdFilesFileId for application/json ContentType.
+type GetProjectIdFilesFileIdJSONRequestBody = DownloadFileRequest
+
+// PutProjectIdFilesFileIdApproveJSONRequestBody defines body for PutProjectIdFilesFileIdApprove for application/json ContentType.
+type PutProjectIdFilesFileIdApproveJSONRequestBody = ApproveFileRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Ping
-	// (GET /hello)
-	GetHello(c *gin.Context)
+	// List requested files
+	// (GET /{project-id}/files)
+	GetProjectIdFiles(c *gin.Context, projectId ProjectIdParam)
+	// Download approved file
+	// (GET /{project-id}/files/{file-id})
+	GetProjectIdFilesFileId(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
+	// Approve file
+	// (PUT /{project-id}/files/{file-id}/approve)
+	PutProjectIdFilesFileIdApprove(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -37,8 +109,19 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(c *gin.Context)
 
-// GetHello operation middleware
-func (siw *ServerInterfaceWrapper) GetHello(c *gin.Context) {
+// GetProjectIdFiles operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectIdFiles(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -47,7 +130,73 @@ func (siw *ServerInterfaceWrapper) GetHello(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetHello(c)
+	siw.Handler.GetProjectIdFiles(c, projectId)
+}
+
+// GetProjectIdFilesFileId operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectIdFilesFileId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "file-id" -------------
+	var fileId FileIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file-id", c.Param("file-id"), &fileId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter file-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetProjectIdFilesFileId(c, projectId, fileId)
+}
+
+// PutProjectIdFilesFileIdApprove operation middleware
+func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdApprove(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "file-id" -------------
+	var fileId FileIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file-id", c.Param("file-id"), &fileId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter file-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutProjectIdFilesFileIdApprove(c, projectId, fileId)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -77,18 +226,31 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
-	router.GET(options.BaseURL+"/hello", wrapper.GetHello)
+	router.GET(options.BaseURL+"/:project-id/files", wrapper.GetProjectIdFiles)
+	router.GET(options.BaseURL+"/:project-id/files/:file-id", wrapper.GetProjectIdFilesFileId)
+	router.PUT(options.BaseURL+"/:project-id/files/:file-id/approve", wrapper.PutProjectIdFilesFileIdApprove)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/1SQwWrzMBCEX8XM/x8d221vuoUQ2tBCQ2hPIQdV2TgKtqSu5EAIfveyctPSk4ZlZlff",
-	"XGF8H7wjlyLUFdEcqddZPlHXeRGBfSBOlvK4pxh1SyLTJRAUYmLrWoxjCabPwTLtobY/xl15M/qPE5mE",
-	"UZzWHfLyPUXDNiTrHRTeFy/FfLMo3jbLYtkyxVjM1yuUSDZ1smIw3UyzmSWmGWUDSpyJ45RvqruqwVjC",
-	"B3I6WCg8VE3VoETQ6ZgB6uMNrKUkj9Bp+cBqD4VHShO50MTgXZy475tGHuNdIpdzOoTOmpysT1Hu3/oT",
-	"9Z/pAIV/9W/B9Xe79XQg9/CX//U51xiHvtd8gcJ6alZmxMIJtb1i4A4K9bnBuBu/AgAA//82PkEewwEA",
-	"AA==",
+	"H4sIAAAAAAAC/9xWXW/bNhT9KwS3hw2QLK/Jk/aUrw4B0iJwt6ciMGjx2mEhkcol5cYz9N+HS33a4uKs",
+	"7Tagb5Z1P47OOZe8e56ZojQatLM83fNSoCjAAfqntyqHW3lP/9GjBJuhKp0ymqf8D62eKmBrlQNTErRT",
+	"awXII67obSncI4+4FgXwlFNQrCSPOMJTpRAkTx1WEHGbPUIhqLrblRRqHSq94XUd8Xs0nyBzpxCUTdhJ",
+	"EG3cP8VRU7AtjbbgSbkUcgFPFVhHT5nRDrT/KcoyV5kgcMknSwj3o7I/Iqx5yn9IBsKT5q1NbhANLtom",
+	"TcvDL70UkmHT9Fem9FbkSrKRVnXE3xv31lRa/negyB1MG8fWvi8FtLlU+qIs0WyBgkZ0lWhKQKcaKisL",
+	"uFQyoKwFZEoys2aiqUOaTh0yqPixL/bQB5oV6U3kXJvPOjdCvoiGTGqXuWnYmoK6a9+wn9QMZozM9TMh",
+	"9BPgDIMNgrVTnBEvxPOSopZW/QnTwu/Esyqqgok8N59BNgUplCnNVjsHVLRQmoJ4Ou8bKO1gA8hHRCwb",
+	"ukRuA22UZroqVoADryK3rMs9+Ia+3S/TdkfEB3pHx2QecxAS6dBwE3kKsFZsAvRdd09bYEA1WBcacXgW",
+	"RZlTn9t2atqjaJiek8bqqoUwk6HulHVj2MpBYU9NFyW+AyekcIIKtZUFoth1hfv3Ey5eULkdHUsab1Bo",
+	"B5KNhenRTVx6DMGr1Zydx03eiwI664cMH5zpv7svJtnhKflAA9GN2ysH40jJ4Ys8xLZTNKIzpDHpS3LY",
+	"F0+OLzw4LE1drqw7acPDJlOgFK/02gSYv7pjF4sr9vviht34AWcX97c84rnKoDVte0defriOz+KrXFSW",
+	"iKkw5yl/dK60aZKYErQ1FWYwM7hJ2uxkZWV8FmdNDvlIOT9xVZbHArPYIcT9ubIFtA2q+ezNbB5L2FIO",
+	"lRal4ik/m81ncx75u9uTm+yHi7tOPGf09wa8ECSDZ+RW8pT/Bq5fGrxkvtCw0nwMD+UQkhztHPVDIwJY",
+	"d2nk7ptdrhNP1Ydy01JyvHi8mc+/Wf/JuRW43xfgKtS2WzxAep/2xiXZzhtIoU499GS0MPkdoSoKgTua",
+	"Cyo3VG+r1lFI8mTfHtz168Vv1tevtkB0MmO8J/9bjgmtMF9tGpM5cLF1CM1+PUBZGyyE4ylfKU1qRaG9",
+	"OLAPto0YevOAZLbKMrB2XeX57ossQynnp1P6/ffQYx1t3R7Z2Oy0y5I23h/2VcBt91XQbe3a+52YLrDE",
+	"v8pz59NLyLtjbIZekf/BFe13dV6gd4DbTqrm1ku2c14/1H8FAAD//0JqLx8iDwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
