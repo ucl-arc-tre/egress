@@ -163,13 +163,8 @@ components:
     ErrorResponse:
       type: object
       required:
-        - error
-        - message
+         - message
       properties:
-        error:
-          type: string
-          description: Error type
-          example: "BAD_REQUEST"
         message:
           type: string
           description: Descriptive error message

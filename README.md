@@ -10,7 +10,7 @@ on top of a storage backend to track file approvals prior to download.
 
 ```bash
 helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
-  --version 0.2.0-dev
+  --version 0.1.0
 ```
 
 ## Architecture
