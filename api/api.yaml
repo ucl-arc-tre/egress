@@ -12,7 +12,7 @@ paths:
   /{project-id}/files:
     get:
       summary: List requested files
-      parameters: 
+      parameters:
         - $ref: '#/components/parameters/ProjectIdParam'
       requestBody:
         required: true
