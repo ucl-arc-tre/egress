@@ -39,22 +39,47 @@ func TestEndpoints(t *testing.T) {
 		method string
 		url    string
 		body   io.Reader
+
+		expectedStatusCode int
 	}{
 		{
 			name:   "GetFileList",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
+
+			expectedStatusCode: http.StatusNotImplemented,
 		},
 		{
 			name:   "ApproveFile",
 			method: http.MethodPut,
 			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0001", "f1234"),
 			body:   strings.NewReader(`{"user_id":"user1"}`),
+
+			expectedStatusCode: http.StatusNoContent,
+		},
+		{
+			name:   "ApproveFileInvalidJson",
+			method: http.MethodPut,
+			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0001", "f1234"),
+			body:   strings.NewReader(`{"user_id}`),
+
+			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:   "GetFile",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, "p0001", "f1234"),
+			body:   strings.NewReader(`{"required_approvals":1,"files_location":"","max_file_size": 1}`),
+
+			expectedStatusCode: http.StatusNotImplemented,
+		},
+		{
+			name:   "GetFileInvalidJson",
+			method: http.MethodGet,
+			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, "p0001", "f1234"),
+			body:   strings.NewReader(`{"n}`),
+
+			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
 
@@ -67,7 +92,7 @@ func TestEndpoints(t *testing.T) {
 			}
 			res, err := client.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, http.StatusNotImplemented, res.StatusCode)
+			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
 		})
 	}
 }
