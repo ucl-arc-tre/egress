@@ -5,27 +5,57 @@ import (
 	"os"
 	"time"
 
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
+	configPath  = "/etc/egress/config.yaml"
+	defaultPort = "8080"
+
 	BaseURL                = "/v0"
 	ServerShutdownDuration = 30 * time.Second
 	ReadHeaderTimeout      = 1 * time.Second
 )
 
+var k *koanf.Koanf
+
 // Initalise config
 func Init() {
-	if envOrDefault("DEBUG", "false") == "true" {
+	initWithPath(configPath)
+}
+
+// Initalise config from given path
+func initWithPath(path string) {
+	k = koanf.New(".")
+	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
+		log.Err(err).Msg("error loading config")
+	}
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if IsDebug() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 }
 
 // Server address e.g. ":8080""
+// Load from env to match with Gin
 func ServerAddress() string {
-	return fmt.Sprintf(":%s", envOrDefault("PORT", "8080"))
+	return fmt.Sprintf(":%s", envOrDefault("PORT", defaultPort))
+}
+
+func IsDebug() bool {
+	return k.Bool("debug")
+}
+
+func S3Credentials() S3CredentialBundle {
+	return S3CredentialBundle{
+		AccessKeyId:     k.String("s3.access_key_id"),
+		SecretAccessKey: k.String("s3.secret_access_key"),
+	}
 }
 
 func envOrDefault(key string, defaultValue string) string {
