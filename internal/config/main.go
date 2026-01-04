@@ -23,12 +23,12 @@ const (
 
 var k *koanf.Koanf
 
-// Initalise config
+// Initialise config
 func Init() {
 	initWithPath(configPath)
 }
 
-// Initalise config from given path
+// Initialise config from given path
 func initWithPath(path string) {
 	k = koanf.New(".")
 	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
