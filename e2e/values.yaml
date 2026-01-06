@@ -10,3 +10,6 @@ service:
   port: 80
 
 debug: true
+s3:
+  access_key_id:
+  secret_access_key:

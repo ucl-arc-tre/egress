@@ -25,3 +25,8 @@ dev: false
 
 # Should debug logs be enabled
 debug: false
+
+# S3 configuration
+s3:
+  access_key_id:
+  secret_access_key:

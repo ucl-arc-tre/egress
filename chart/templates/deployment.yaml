@@ -50,8 +50,11 @@ spec:
             httpGet:
               path: /ready
               port: http
-          {{- if .Values.dev }}
           volumeMounts:
+            - name: config
+              mountPath: /etc/egress
+              readOnly: true
+          {{- if .Values.dev }}
             - name: repo
               mountPath: /repo
               readOnly: false
@@ -63,8 +66,11 @@ spec:
             - name: cache
               mountPath: /home/user/.cache
           {{- end }}
-      {{- if .Values.dev }}
       volumes:
+        - name: config
+          secret:
+            secretName: {{ $name }}-config
+      {{- if .Values.dev }}
         - name: repo
           hostPath:
              path: "/repo"
