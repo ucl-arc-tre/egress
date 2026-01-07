@@ -2,6 +2,8 @@ package s3
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -17,6 +19,7 @@ type Storage struct {
 }
 
 func New() *Storage {
+	// todo - allow real S3
 	config, err := awsConfig.LoadDefaultConfig(
 		context.Background(),
 		awsConfig.WithCredentialsProvider(awsCredentials.StaticCredentialsProvider{
@@ -25,18 +28,25 @@ func New() *Storage {
 				SecretAccessKey: "rustfsadmin",
 			},
 		}),
-		awsConfig.WithRegion("eu-west-2"),
+		awsConfig.WithRegion("us-east-1"),
 	)
 	if err != nil {
 		panic(err)
 	}
-	storage := Storage{
-		client: awsS3.NewFromConfig(config),
-	}
-	return &storage
+	client := awsS3.NewFromConfig(
+		config,
+		awsS3.WithEndpointResolverV2(makeResolver()),
+		func(o *awsS3.Options) { o.UsePathStyle = true },
+	)
+	return &Storage{client: client}
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.ObjectMeta, error) {
+	resp, err := s.client.ListObjectsV2(ctx, &awsS3.ListObjectsV2Input{
+		Bucket: aws.String("bucket1"),
+	})
+	log.Debug().Any("resp", resp).Err(err).Msg("listed buckets")
+
 	objectsMeta := []types.ObjectMeta{}
 	bucketName, err := location.BucketName()
 	if err != nil {
@@ -55,12 +65,13 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 			}
 			objectsMeta = append(objectsMeta, types.ObjectMeta{
 				Name:           *o.Key,
-				Id:             types.FileId(*o.ETag),
+				Id:             types.FileId(stripQuotes(*o.ETag)),
 				Size:           *o.Size,
 				LastModifiedAt: *o.LastModified,
 			})
 		}
 	}
+	log.Debug().Any("location", location).Str("bucketName", bucketName).Msg("Found objects")
 	return objectsMeta, nil
 }
 
@@ -80,10 +91,19 @@ func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId ty
 	if err != nil {
 		return nil, types.NewErrServerF("failed to get object [%w]", err)
 	}
-	if output.ETag != nil && *output.ETag != string(fileId) {
+	if output.ETag != nil && !eTagEqualsFileId(output.ETag, fileId) {
+		if err := output.Body.Close(); err != nil {
+			return nil, types.NewErrServerF("failed to close [%w]", err)
+		}
 		return nil, types.NewErrNotFoundF("no object with fileId [%v]", fileId)
 	}
-	return &types.Object{Content: output.Body}, nil
+	if output.ContentLength == nil {
+		if err := output.Body.Close(); err != nil {
+			return nil, types.NewErrServerF("failed to close [%w]", err)
+		}
+		return nil, types.NewErrServerF("object missing content length")
+	}
+	return &types.Object{Content: output.Body, Size: *output.ContentLength}, nil
 }
 
 func (s *Storage) objectKeyWithFileId(ctx context.Context, bucketName string, fileId types.FileId) (*string, error) {
@@ -98,7 +118,7 @@ func (s *Storage) objectKeyWithFileId(ctx context.Context, bucketName string, fi
 				log.Error().Any("object", o).Msg("Object missing a required field")
 				continue
 			}
-			if *o.ETag == string(fileId) {
+			if eTagEqualsFileId(o.ETag, fileId) {
 				return o.Key, nil
 			}
 		}
@@ -111,4 +131,15 @@ func (s *Storage) newListObjectsPaginator(bucketName string) *awsS3.ListObjectsV
 		Bucket: aws.String(bucketName),
 	}
 	return awsS3.NewListObjectsV2Paginator(s.client, &input)
+}
+
+func eTagEqualsFileId(eTag *string, fileId types.FileId) bool {
+	if eTag == nil {
+		return false
+	}
+	return *eTag == fmt.Sprintf(`"%v"`, fileId)
+}
+
+func stripQuotes(s string) string {
+	return strings.ReplaceAll(s, `"`, "")
 }

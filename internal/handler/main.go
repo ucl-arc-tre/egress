@@ -35,18 +35,13 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 
 	projectApprovals, err := h.db.FileApprovals(types.ProjectId(projectId))
 	if err != nil {
-		log.Err(err).Msg("Failed to get file approvals")
-		ctx.Status(http.StatusInternalServerError)
+		setError(ctx, projectId, err, "Failed to get file approvals")
 		return
 	}
 
 	location, err := storage.ParseLocation(data.FileLocation)
 	if err != nil {
-		log.Err(err).
-			Any("projectId", projectId).
-			Str("FileLocation", data.FileLocation).
-			Msg("Failed parse file location")
-		setInvalidObject(ctx, "Failed to parse file location")
+		setError(ctx, projectId, err, "Failed to parse file location")
 		return
 	}
 
@@ -58,8 +53,7 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 		err = errors.New("unspported storage backend kind")
 	}
 	if err != nil {
-		log.Err(err).Msg("Failed to get list objects from storage backend")
-		ctx.Status(http.StatusInternalServerError)
+		setError(ctx, projectId, err, "Failed to get list objects from storage backend")
 		return
 	}
 
@@ -83,8 +77,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 
 	projectApprovals, err := h.db.FileApprovals(types.ProjectId(projectId))
 	if err != nil {
-		log.Err(err).Any("projectId", projectId).Msg("Failed to get approved files")
-		ctx.Status(http.StatusInternalServerError)
+		setError(ctx, projectId, err, "Failed to get approved files")
 		return
 	}
 	fileApprovals, exists := projectApprovals[types.FileId(fileId)]
@@ -101,7 +94,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 
 	location, err := storage.ParseLocation(data.FilesLocation)
 	if err != nil {
-		setInvalidObject(ctx, "Failed to parse file location")
+		setError(ctx, projectId, err, "Failed to parse file location")
 		return
 	}
 
@@ -113,8 +106,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		err = errors.New("unspported storage backend kind")
 	}
 	if err != nil {
-		log.Err(err).Msg("Failed to get list objects from storage backend")
-		ctx.Status(http.StatusInternalServerError)
+		setError(ctx, projectId, err, "Failed to get list objects from storage")
 		return
 	}
 	defer func() {
@@ -122,7 +114,14 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 			log.Err(err).Msg("Failed to close stream")
 		}
 	}()
+	if object.Size > int64(data.MaxFileSize) {
+		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
+			Message: fmt.Sprintf("Size [%d] was greater than max [%d]", object.Size, data.MaxFileSize),
+		})
+		return
+	}
 
+	ctx.Header("Content-Type", "application/octet-stream")
 	ctx.Status(http.StatusOK)
 	numBytes, err := io.Copy(ctx.Writer, object.Content)
 	if err != nil {
@@ -146,8 +145,7 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		types.UserId(data.UserId),
 	)
 	if err != nil {
-		log.Err(err).Any("projectId", projectId).Msg("Failed to approve file")
-		ctx.Status(http.StatusInternalServerError)
+		setError(ctx, projectId, err, "Failed to approve file")
 		return
 	}
 	ctx.Status(http.StatusNoContent)

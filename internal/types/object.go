@@ -7,6 +7,7 @@ import (
 
 type Object struct {
 	Content io.ReadCloser
+	Size    int64 // Number of  bytes
 }
 
 type ObjectMeta struct {

@@ -28,6 +28,10 @@ func ServerAddress() string {
 	return fmt.Sprintf(":%s", envOrDefault("PORT", "8080"))
 }
 
+func DevS3URL() string {
+	return "http://rustfs-svc.rustfs.svc.cluster.local:9000"
+}
+
 func envOrDefault(key string, defaultValue string) string {
 	if value := os.Getenv(key); value == "" {
 		return defaultValue

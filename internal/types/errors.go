@@ -7,7 +7,7 @@ import (
 
 var (
 	ErrInvalidObject = errors.New("invalid object")
-	ErrServerError   = errors.New("server error")
+	ErrServer        = errors.New("server error")
 	ErrNotFound      = errors.New("not found")
 )
 
@@ -16,7 +16,7 @@ func NewErrInvalidObjectF(format string, objs ...any) error {
 }
 
 func NewErrServerF(format string, objs ...any) error {
-	return newErrorWithType(fmt.Errorf(format, objs...), ErrServerError)
+	return newErrorWithType(fmt.Errorf(format, objs...), ErrServer)
 }
 
 func NewErrNotFoundF(format string, objs ...any) error {

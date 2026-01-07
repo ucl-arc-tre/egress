@@ -6,9 +6,10 @@ import "github.com/ucl-arc-tre/egress/internal/types"
 
 func MakeFileMetadata(objectMeta types.ObjectMeta, approvals types.FileApprovals) FileMetadata {
 	fileMetadata := FileMetadata{
-		FileName: objectMeta.Name,
-		Id:       string(objectMeta.Id),
-		Size:     int(objectMeta.Size),
+		FileName:  objectMeta.Name,
+		Id:        string(objectMeta.Id),
+		Size:      int(objectMeta.Size),
+		Approvals: []string{},
 	}
 	for _, approval := range approvals {
 		fileMetadata.Approvals = append(fileMetadata.Approvals, string(approval))
