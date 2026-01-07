@@ -7,7 +7,10 @@ import (
 )
 
 func TestBucketNameFromLocation(t *testing.T) {
-	location, err := ParseLocation("s3://bucket1/path")
+	_, err := ParseLocation("s3://bucket1/with/path")
+	assert.Error(t, err)
+
+	location, err := ParseLocation("s3://bucket1")
 	assert.NoError(t, err)
 	bucketName, err := location.BucketName()
 	assert.NoError(t, err)
