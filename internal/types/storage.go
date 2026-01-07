@@ -1,6 +1,8 @@
 package types
 
-import "net/url"
+import (
+	"net/url"
+)
 
 const (
 	StorageBackendKindS3      = StorageBackendKind("s3")
@@ -25,4 +27,11 @@ func (l LocationURI) StorageBackendKind() StorageBackendKind {
 	default:
 		return StorageBackendKindUnknown
 	}
+}
+
+func (l LocationURI) BucketName() (string, error) {
+	if kind := l.StorageBackendKind(); l.StorageBackendKind() != StorageBackendKindS3 {
+		return "", NewErrInvalidObjectF("storage backend kind not S3. [%v]", kind)
+	}
+	return l.Host, nil
 }

@@ -1,8 +1,12 @@
 package storage
 
-import "github.com/ucl-arc-tre/egress/internal/types"
+import (
+	"context"
+
+	"github.com/ucl-arc-tre/egress/internal/types"
+)
 
 type Interface interface {
-	List(location types.LocationURI) ([]types.ObjectMeta, error)
-	Get(location types.LocationURI, fileId types.FileId) (*types.Object, error)
+	List(ctx context.Context, location types.LocationURI) ([]types.ObjectMeta, error)
+	Get(ctx context.Context, location types.LocationURI, fileId types.FileId) (*types.Object, error)
 }

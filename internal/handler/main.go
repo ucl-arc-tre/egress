@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -52,7 +53,7 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 	objectsMeta := []types.ObjectMeta{}
 	switch location.StorageBackendKind() {
 	case types.StorageBackendKindS3:
-		objectsMeta, err = h.s3.List(*location)
+		objectsMeta, err = h.s3.List(ctx, *location)
 	default:
 		err = errors.New("unspported storage backend kind")
 	}
@@ -98,9 +99,38 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 
-	// todo - stream file
+	location, err := storage.ParseLocation(data.FilesLocation)
+	if err != nil {
+		setInvalidObject(ctx, "Failed to parse file location")
+		return
+	}
 
-	ctx.Status(http.StatusNotImplemented)
+	var object *types.Object
+	switch location.StorageBackendKind() {
+	case types.StorageBackendKindS3:
+		object, err = h.s3.Get(ctx, *location, types.FileId(fileId))
+	default:
+		err = errors.New("unspported storage backend kind")
+	}
+	if err != nil {
+		log.Err(err).Msg("Failed to get list objects from storage backend")
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		if err := object.Content.Close(); err != nil {
+			log.Err(err).Msg("Failed to close stream")
+		}
+	}()
+
+	ctx.Status(http.StatusOK)
+	numBytes, err := io.Copy(ctx.Writer, object.Content)
+	if err != nil {
+		log.Err(err).
+			Any("projectId", projectId).
+			Int64("numBytes", numBytes).
+			Msg("Failed to copy stream")
+	}
 }
 
 func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {

@@ -13,5 +13,5 @@ type ObjectMeta struct {
 	Name           string
 	LastModifiedAt time.Time
 	Id             FileId
-	NumBytes       int
+	Size           int64 // Number of  bytes
 }

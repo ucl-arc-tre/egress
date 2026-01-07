@@ -34,7 +34,7 @@ test-e2e: dev-k3d ## Run end-to-end tests
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
 	go test ./e2e/...
 
-dev: dev-k3d ## Deploy dev env
+dev: dev-requirements dev-k3d ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
@@ -63,9 +63,14 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--wait; \
 	fi
 	k3d kubeconfig get $(K3D_CLUSTER_NAME) > $(DEV_KUBECONFIG_PATH)
+	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
+	  --set mode.standalone.enabled=true \
+	  --set replicaCount=1 \
+      --set mode.distributed.enabled=false
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
 	$(call assert_command_exists, k3d, "Please install k3d: https://k3d.io/stable/#installation")
+	$(call assert_command_exists, helm, "Please install helm: https://helm.sh/docs/intro/install/")
 
 .SILENT:  # all targets

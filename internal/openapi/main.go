@@ -8,7 +8,7 @@ func MakeFileMetadata(objectMeta types.ObjectMeta, approvals types.FileApprovals
 	fileMetadata := FileMetadata{
 		FileName: objectMeta.Name,
 		Id:       string(objectMeta.Id),
-		Size:     objectMeta.NumBytes,
+		Size:     int(objectMeta.Size),
 	}
 	for _, approval := range approvals {
 		fileMetadata.Approvals = append(fileMetadata.Approvals, string(approval))
