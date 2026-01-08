@@ -16,7 +16,7 @@ const (
 	baseUrl          = "http://localhost:8080"
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
-	serviceUpTimeout = 1 * time.Minute
+	serviceUpTimeout = 2 * time.Minute
 
 	s3Location = "s3://bucket1"
 )
@@ -27,19 +27,39 @@ func init() {
 		if time.Now().After(timeout) {
 			panic("timed out waiting for ping")
 		}
-		resp, err := http.Get(baseUrl + "/ping")
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if canPing() && canListFiles() {
 			return
 		}
 		time.Sleep(2 * time.Second)
 	}
 }
 
+func newClient() *http.Client {
+
+	return &http.Client{Timeout: requestTimeout}
+}
+
+func canPing() bool {
+	resp, err := http.Get(baseUrl + "/ping")
+	return err == nil && resp.StatusCode == http.StatusOK
+}
+
+func canListFiles() bool {
+	url := fmt.Sprintf("%s/%s/files", baseApiUrl, "p001")
+	body := strings.NewReader(fmt.Sprintf(`{"file_location":"%s"}`, s3Location))
+	req, err := http.NewRequest("GET", url, body)
+	if err != nil {
+		return false
+	}
+	resp, err := newClient().Do(req)
+	return err == nil && resp.StatusCode == http.StatusOK
+}
+
 func TestEndpointResponseCodes(t *testing.T) {
 	projectId := "p0001"
 	fileId := "f1234"
 
-	client := &http.Client{Timeout: requestTimeout}
+	client := newClient()
 	tests := []struct {
 		name   string
 		method string

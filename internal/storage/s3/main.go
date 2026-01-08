@@ -21,11 +21,6 @@ func New() *Storage {
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.ObjectMeta, error) {
-	resp, err := s.client.ListObjectsV2(ctx, &awsS3.ListObjectsV2Input{
-		Bucket: aws.String("bucket1"),
-	})
-	log.Debug().Any("resp", resp).Err(err).Msg("listed buckets")
-
 	objectsMeta := []types.ObjectMeta{}
 	bucketName, err := location.BucketName()
 	if err != nil {
