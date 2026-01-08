@@ -28,13 +28,13 @@ codegen:  ## Run code generation
 test-unit:  ## Run unit tests
 	go test ./internal/...
 
-test-e2e: dev-k3d ## Run end-to-end tests
+test-e2e: dev-k3d dev-rustfs ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
 	go test ./e2e/...
 
-dev: dev-requirements dev-k3d ## Deploy dev env
+dev: dev-requirements dev-k3d dev-rustfs ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
@@ -63,6 +63,9 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--wait; \
 	fi
 	k3d kubeconfig get $(K3D_CLUSTER_NAME) > $(DEV_KUBECONFIG_PATH)
+
+dev-rustfs: ## Install rustfs as an S3 compatible object store
+	helm repo add rustfs https://charts.rustfs.com
 	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
 	  --set mode.standalone.enabled=true \
 	  --set replicaCount=1 \
