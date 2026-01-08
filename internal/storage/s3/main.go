@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	awsCredentials "github.com/aws/aws-sdk-go-v2/credentials"
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/rs/zerolog/log"
 
@@ -19,26 +17,7 @@ type Storage struct {
 }
 
 func New() *Storage {
-	// todo - allow real S3
-	config, err := awsConfig.LoadDefaultConfig(
-		context.Background(),
-		awsConfig.WithCredentialsProvider(awsCredentials.StaticCredentialsProvider{
-			Value: aws.Credentials{
-				AccessKeyID:     "rustfsadmin",
-				SecretAccessKey: "rustfsadmin",
-			},
-		}),
-		awsConfig.WithRegion("us-east-1"),
-	)
-	if err != nil {
-		panic(err)
-	}
-	client := awsS3.NewFromConfig(
-		config,
-		awsS3.WithEndpointResolverV2(makeResolver()),
-		func(o *awsS3.Options) { o.UsePathStyle = true },
-	)
-	return &Storage{client: client}
+	return &Storage{client: newClient()}
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.ObjectMeta, error) {
@@ -56,7 +35,7 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 	for objectPaginator.HasMorePages() {
 		output, err := objectPaginator.NextPage(ctx)
 		if err != nil {
-			return objectsMeta, err
+			return objectsMeta, types.NewErrServerF("failed to list [%w]", err)
 		}
 		for _, o := range output.Contents {
 			if o.Key == nil || o.ETag == nil || o.Size == nil || o.LastModified == nil {

@@ -16,6 +16,8 @@ const (
 	baseApiUrl       = baseUrl + "/v0"
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 1 * time.Minute
+
+	s3Location = "s3://bucket1"
 )
 
 func init() {
@@ -32,7 +34,10 @@ func init() {
 	}
 }
 
-func TestEndpoints(t *testing.T) {
+func TestEndpointsResponseCode(t *testing.T) {
+	projectId := "p0001"
+	fileId := "f1234"
+
 	client := &http.Client{Timeout: requestTimeout}
 	tests := []struct {
 		name   string
@@ -45,14 +50,15 @@ func TestEndpoints(t *testing.T) {
 		{
 			name:   "GetFileList",
 			method: http.MethodGet,
-			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
+			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+			body:   strings.NewReader(fmt.Sprintf(`{"file_location":"%s"}`, s3Location)),
 
-			expectedStatusCode: http.StatusNotImplemented,
+			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:   "ApproveFile",
 			method: http.MethodPut,
-			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0001", "f1234"),
+			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
 			body:   strings.NewReader(`{"user_id":"user1"}`),
 
 			expectedStatusCode: http.StatusNoContent,
@@ -60,7 +66,7 @@ func TestEndpoints(t *testing.T) {
 		{
 			name:   "ApproveFileInvalidJson",
 			method: http.MethodPut,
-			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0001", "f1234"),
+			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
 			body:   strings.NewReader(`{"user_id}`),
 
 			expectedStatusCode: http.StatusBadRequest,
@@ -68,15 +74,15 @@ func TestEndpoints(t *testing.T) {
 		{
 			name:   "GetFile",
 			method: http.MethodGet,
-			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, "p0001", "f1234"),
-			body:   strings.NewReader(`{"required_approvals":1,"files_location":"","max_file_size": 1}`),
+			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+			body:   strings.NewReader(fmt.Sprintf(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, s3Location)),
 
-			expectedStatusCode: http.StatusNotImplemented,
+			expectedStatusCode: http.StatusNotFound,
 		},
 		{
 			name:   "GetFileInvalidJson",
 			method: http.MethodGet,
-			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, "p0001", "f1234"),
+			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 			body:   strings.NewReader(`{"n}`),
 
 			expectedStatusCode: http.StatusBadRequest,
