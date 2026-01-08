@@ -33,5 +33,6 @@ debug: false
 
 # S3 configuration
 s3:
+  region: null
   access_key_id: null
   secret_access_key: null

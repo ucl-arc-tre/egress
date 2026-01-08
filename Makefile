@@ -5,6 +5,8 @@ K3D_CLUSTER_NAME := "ucl-arc-tre-egress"
 K3D_K3S_IMAGE_VERSION := rancher/k3s:v1.34.2-k3s1
 DEV_NODEPORT := 30001
 DEV_EXTERNAL_PORT := 8080
+DEV_RUSTFS_NODEPORT := 32000
+DEV_RUSTFS_EXTERNAL_PORT := 8081
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
@@ -53,6 +55,7 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--servers 1 \
 		--agents 0 \
 		--port "${DEV_EXTERNAL_PORT}:${DEV_NODEPORT}@server:0:direct" \
+		--port "${DEV_RUSTFS_EXTERNAL_PORT}:${DEV_RUSTFS_NODEPORT}@server:0:direct" \
 		--k3s-arg="--disable=traefik@server:*" \
 		--k3s-arg="--disable=metrics-server@server:*" \
 		--k3s-arg="--disable-cloud-controller@server:*" \
@@ -69,6 +72,7 @@ dev-rustfs: ## Install rustfs as an S3 compatible object store
 	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
 	  --set mode.standalone.enabled=true \
 	  --set replicaCount=1 \
+	  --set service.type=NodePort \
       --set mode.distributed.enabled=false
 
 dev-requirements:  ## Check if the dev requirements are satisfied

@@ -1,15 +1,22 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/ucl-arc-tre/egress/internal/config"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 )
 
 const (
@@ -17,8 +24,10 @@ const (
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 2 * time.Minute
+)
 
-	s3Location = "s3://bucket1"
+var (
+	s3Location = fmt.Sprintf("s3://%s", bucketName)
 )
 
 func init() {
@@ -34,7 +43,7 @@ func init() {
 	}
 }
 
-func newClient() *http.Client {
+func newHTTPClient() *http.Client {
 
 	return &http.Client{Timeout: requestTimeout}
 }
@@ -51,7 +60,7 @@ func canListFiles() bool {
 	if err != nil {
 		return false
 	}
-	resp, err := newClient().Do(req)
+	resp, err := newHTTPClient().Do(req)
 	return err == nil && resp.StatusCode == http.StatusOK
 }
 
@@ -59,7 +68,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 	projectId := "p0001"
 	fileId := "f1234"
 
-	client := newClient()
+	client := newHTTPClient()
 	tests := []struct {
 		name   string
 		method string
@@ -72,7 +81,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFileList",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-			body:   strings.NewReader(fmt.Sprintf(`{"file_location":"%s"}`, s3Location)),
+			body:   makeRequestBodyF(`{"file_location":"%s"}`, s3Location),
 
 			expectedStatusCode: http.StatusOK,
 		},
@@ -96,7 +105,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFile",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
-			body:   strings.NewReader(fmt.Sprintf(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, s3Location)),
+			body:   makeRequestBodyF(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, s3Location),
 
 			expectedStatusCode: http.StatusNotFound,
 		},
@@ -122,4 +131,98 @@ func TestEndpointResponseCodes(t *testing.T) {
 			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
 		})
 	}
+}
+
+func TestApprovalAndEgressS3(t *testing.T) {
+	projectId := "pTestApprovalAndEgressS3"
+	userId := "userTestApprovalAndEgressS3"
+
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+
+	s3Client := newS3Client()
+	putObjectOut, err := s3Client.PutObject(context.Background(), &awsS3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key.String()),
+		Body:   strings.NewReader(fileContent),
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, putObjectOut.ETag)
+	fileId := stripQuotes(*putObjectOut.ETag)
+
+	client := newHTTPClient()
+
+	// List files - expecting one with none approved
+	req := must(http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+	))
+	res := must(client.Do(req))
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	partialListFilesResponse := []PartialListFileResponse{}
+	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
+	assertNoError(res.Body.Close())
+	assert.NoError(t, err)
+	assert.True(t, len(partialListFilesResponse) > 0)
+	idx := slices.IndexFunc(partialListFilesResponse, func(o PartialListFileResponse) bool {
+		return o.FileName == key.String()
+	})
+	assert.NotEqual(t, -1, idx)
+	assert.Len(t, partialListFilesResponse[idx].Approvals, 0)
+
+	// Approve uploaded file
+	req = must(http.NewRequest(
+		"PUT",
+		fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
+		makeRequestBodyF(`{"user_id": "%s"}`, userId),
+	))
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	res = must(client.Do(req))
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+
+	// List files - expecting one approved
+	req = must(http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+	))
+	res = must(client.Do(req))
+	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
+	assertNoError(res.Body.Close())
+	idx = slices.IndexFunc(partialListFilesResponse, func(o PartialListFileResponse) bool {
+		return o.FileName == key.String()
+	})
+	assert.Len(t, partialListFilesResponse[idx].Approvals, 1)
+
+	// The one file can now be downloaded
+	req = must(http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+		makeRequestBodyF(
+			`{"required_approvals": %d,"files_location": "%s","max_file_size": %d}`,
+			1,
+			s3Location,
+			100,
+		),
+	))
+	res = must(client.Do(req))
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	content := must(io.ReadAll(res.Body))
+	assert.Equal(t, fileContent, string(content))
+}
+
+func stripQuotes(s string) string {
+	return strings.ReplaceAll(s, `"`, "")
+}
+
+func makeRequestBodyF(format string, objs ...any) io.Reader {
+	return strings.NewReader(fmt.Sprintf(format, objs...))
+}
+
+type PartialListFileResponse struct {
+	FileName  string   `json:"file_name"`
+	Approvals []string `json:"approvals"`
 }
