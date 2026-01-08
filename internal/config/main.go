@@ -5,43 +5,66 @@ import (
 	"os"
 	"time"
 
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
+	configPath  = "/etc/egress/config.yaml"
+	defaultPort = "8080"
+
 	BaseURL                = "/v0"
 	ServerShutdownDuration = 30 * time.Second
 	ReadHeaderTimeout      = 1 * time.Second
 )
 
-// Initalise config
+var k *koanf.Koanf
+
+// Initialise config
 func Init() {
-	if envOrDefault("DEBUG", "false") == "true" {
+	initWithPath(configPath)
+}
+
+// Initialise config from given path
+func initWithPath(path string) {
+	k = koanf.New(".")
+	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
+		log.Err(err).Msg("error loading config")
+	}
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if IsDebug() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 }
 
 // Server address e.g. ":8080""
+// Load from env to match with Gin
 func ServerAddress() string {
-	return fmt.Sprintf(":%s", envOrDefault("PORT", "8080"))
+	return fmt.Sprintf(":%s", envOrDefault("PORT", defaultPort))
 }
 
-func DevS3URL() string {
-	return "http://rustfs-svc.rustfs.svc.cluster.local:9000"
-}
-
-func DevS3Bucket() string {
-	return "bucket1"
+func IsDebug() bool {
+	return k.Bool("debug")
 }
 
 func S3Credentials() S3CredentialBundle {
 	return S3CredentialBundle{
-		Region:          "us-east-1",
-		AccessKeyId:     "rustfsadmin",
-		SecretAccessKey: "rustfsadmin",
+		Region:          k.String("s3.region"),
+		AccessKeyId:     k.String("s3.access_key_id"),
+		SecretAccessKey: k.String("s3.secret_access_key"),
 	}
+}
+
+func DevS3URL() string {
+	return k.String("dev.s3.url")
+}
+
+func DevS3Bucket() string {
+	return k.String("dev.s3.bucket")
 }
 
 func IsDevS3() bool {

@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/ucl-arc-tre/egress/internal/config"
 )
 
 const (
 	baseUrl          = "http://localhost:8080"
-	baseApiUrl       = baseUrl + "/v0"
+	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 1 * time.Minute
 
@@ -34,7 +35,7 @@ func init() {
 	}
 }
 
-func TestEndpointsResponseCode(t *testing.T) {
+func TestEndpointResponseCodes(t *testing.T) {
 	projectId := "p0001"
 	fileId := "f1234"
 

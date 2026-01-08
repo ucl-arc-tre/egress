@@ -19,9 +19,19 @@ service:
   nodePort: null
   port: 80
 
-# Is this a development deployment. If so then will expect to be
-# able to mount in this repository under /repo
-dev: false
+dev:
+  # Will expect to be able to mount in this repository under /repo
+  hot_reload: true
+  s3:
+    # URL override for S3. Required for rustfs
+    url: null
+    # Name of the bucket to create on init for dev
+    bucket: null
 
 # Should debug logs be enabled
 debug: false
+
+# S3 configuration
+s3:
+  access_key_id: null
+  secret_access_key: null
