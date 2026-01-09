@@ -9,9 +9,6 @@ type ProjectId string
 // accross projects
 type UserId string
 
-// Unique file identifier. e.g. a SHA512 checksum
-type FileId string
-
 // List of users who have approved a file
 type FileApprovals []UserId
 

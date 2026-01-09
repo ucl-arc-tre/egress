@@ -4,11 +4,11 @@ import "github.com/ucl-arc-tre/egress/internal/types"
 
 //go:generate go tool oapi-codegen -generate types,spec,gin -package openapi -o main.gen.go ../../api/api.yaml
 
-func MakeFileMetadata(objectMeta types.ObjectMeta, approvals types.FileApprovals) FileMetadata {
+func MakeFileMetadata(metadata types.FileMetadata, approvals types.FileApprovals) FileMetadata {
 	fileMetadata := FileMetadata{
-		FileName:  objectMeta.Name,
-		Id:        string(objectMeta.Id),
-		Size:      int(objectMeta.Size),
+		FileName:  metadata.Name,
+		Id:        string(metadata.Id),
+		Size:      int(metadata.Size),
 		Approvals: []string{},
 	}
 	for _, approval := range approvals {

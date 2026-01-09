@@ -5,12 +5,15 @@ import (
 	"time"
 )
 
-type Object struct {
+// Unique file identifier. e.g. a SHA512 checksum
+type FileId string
+
+type File struct {
 	Content io.ReadCloser
 	Size    int64 // Number of  bytes
 }
 
-type ObjectMeta struct {
+type FileMetadata struct {
 	Name           string
 	LastModifiedAt time.Time
 	Id             FileId

@@ -20,24 +20,24 @@ func New() *Storage {
 	return &Storage{client: newClient()}
 }
 
-func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.ObjectMeta, error) {
-	objectsMeta := []types.ObjectMeta{}
+func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.FileMetadata, error) {
+	filesMetadata := []types.FileMetadata{}
 	bucketName, err := location.BucketName()
 	if err != nil {
-		return objectsMeta, err
+		return filesMetadata, err
 	}
 	objectPaginator := s.newListObjectsPaginator(bucketName)
 	for objectPaginator.HasMorePages() {
 		output, err := objectPaginator.NextPage(ctx)
 		if err != nil {
-			return objectsMeta, types.NewErrServerF("failed to list [%w]", err)
+			return filesMetadata, types.NewErrServerF("failed to list [%w]", err)
 		}
 		for _, o := range output.Contents {
 			if o.Key == nil || o.ETag == nil || o.Size == nil || o.LastModified == nil {
 				log.Error().Any("object", o).Msg("Object missing a required field")
 				continue
 			}
-			objectsMeta = append(objectsMeta, types.ObjectMeta{
+			filesMetadata = append(filesMetadata, types.FileMetadata{
 				Name:           *o.Key,
 				Id:             types.FileId(stripQuotes(*o.ETag)),
 				Size:           *o.Size,
@@ -46,10 +46,10 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 		}
 	}
 	log.Debug().Any("location", location).Str("bucketName", bucketName).Msg("Found objects")
-	return objectsMeta, nil
+	return filesMetadata, nil
 }
 
-func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId types.FileId) (*types.Object, error) {
+func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId types.FileId) (*types.File, error) {
 	bucketName, err := location.BucketName()
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId ty
 		}
 		return nil, types.NewErrServerF("object missing content length")
 	}
-	return &types.Object{Content: output.Body, Size: *output.ContentLength}, nil
+	return &types.File{Content: output.Body, Size: *output.ContentLength}, nil
 }
 
 func (s *Storage) objectKeyWithFileId(ctx context.Context, bucketName string, fileId types.FileId) (*string, error) {

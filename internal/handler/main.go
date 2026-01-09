@@ -45,22 +45,22 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 		return
 	}
 
-	objectsMeta := []types.ObjectMeta{}
+	filesMetadata := []types.FileMetadata{}
 	switch location.StorageBackendKind() {
 	case types.StorageBackendKindS3:
-		objectsMeta, err = h.s3.List(ctx, *location)
+		filesMetadata, err = h.s3.List(ctx, *location)
 	default:
 		err = errors.New("unspported storage backend kind")
 	}
 	if err != nil {
-		setError(ctx, projectId, err, "Failed to get list objects from storage backend")
+		setError(ctx, projectId, err, "Failed to get list files from storage backend")
 		return
 	}
 
 	response := openapi.FileListResponse{}
-	for _, objectMeta := range objectsMeta {
-		approvals := projectApprovals.FileApprovals(objectMeta.Id)
-		fileMetadata := openapi.MakeFileMetadata(objectMeta, approvals)
+	for _, fileMetadata := range filesMetadata {
+		approvals := projectApprovals.FileApprovals(fileMetadata.Id)
+		fileMetadata := openapi.MakeFileMetadata(fileMetadata, approvals)
 		response = append(response, fileMetadata)
 	}
 
@@ -98,32 +98,32 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 
-	var object *types.Object
+	var file *types.File
 	switch location.StorageBackendKind() {
 	case types.StorageBackendKindS3:
-		object, err = h.s3.Get(ctx, *location, types.FileId(fileId))
+		file, err = h.s3.Get(ctx, *location, types.FileId(fileId))
 	default:
 		err = errors.New("unspported storage backend kind")
 	}
 	if err != nil {
-		setError(ctx, projectId, err, "Failed to get list objects from storage")
+		setError(ctx, projectId, err, "Failed to get list files from storage")
 		return
 	}
 	defer func() {
-		if err := object.Content.Close(); err != nil {
+		if err := file.Content.Close(); err != nil {
 			log.Err(err).Msg("Failed to close stream")
 		}
 	}()
-	if object.Size > int64(data.MaxFileSize) {
+	if file.Size > int64(data.MaxFileSize) {
 		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
-			Message: fmt.Sprintf("Size [%d] was greater than max [%d]", object.Size, data.MaxFileSize),
+			Message: fmt.Sprintf("Size [%d] was greater than max [%d]", file.Size, data.MaxFileSize),
 		})
 		return
 	}
 
 	ctx.Header("Content-Type", "application/octet-stream")
 	ctx.Status(http.StatusOK)
-	numBytes, err := io.Copy(ctx.Writer, object.Content)
+	numBytes, err := io.Copy(ctx.Writer, file.Content)
 	if err != nil {
 		log.Err(err).
 			Any("projectId", projectId).
