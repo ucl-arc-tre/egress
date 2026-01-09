@@ -54,7 +54,7 @@ func canPing() bool {
 func canListFiles() bool {
 	url := fmt.Sprintf("%s/%s/files", baseApiUrl, "p001")
 	body := strings.NewReader(fmt.Sprintf(`{"file_location":"%s"}`, s3Location))
-	req, err := http.NewRequest("GET", url, body)
+	req, err := http.NewRequest(http.MethodGet, url, body)
 	if err != nil {
 		return false
 	}
@@ -152,7 +152,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 
 	// List files - expecting one with none approved
 	req := must(http.NewRequest(
-		"GET",
+		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
 		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
 	))
@@ -170,7 +170,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 
 	// Approve uploaded file
 	req = must(http.NewRequest(
-		"PUT",
+		http.MethodPut,
 		fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
 		makeRequestBodyF(`{"user_id": "%s"}`, userId),
 	))
@@ -180,7 +180,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 
 	// List files - expecting one approved
 	req = must(http.NewRequest(
-		"GET",
+		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
 		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
 	))
@@ -193,7 +193,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 
 	// The one file can now be downloaded
 	req = must(http.NewRequest(
-		"GET",
+		http.MethodGet,
 		fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 		makeRequestBodyF(
 			`{"required_approvals": %d,"files_location": "%s","max_file_size": %d}`,
