@@ -17,13 +17,13 @@ helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
 
 ### Database backends
 
-- In memory (dev only): In progress
+- In memory (dev only): Beta
 - [Rqlite](https://github.com/rqlite/rqlite): Planned
 - [Postgres](https://github.com/postgres/postgres): Planned
 
 ### Storage backends
 
-- S3: In progress
+- S3: Beta
 - Generic API: Planned
 
 ## Contributing

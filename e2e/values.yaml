@@ -10,6 +10,13 @@ service:
   port: 80
 
 debug: true
+
+dev:
+  s3:
+    url: "http://rustfs-svc.rustfs.svc.cluster.local:9000"
+    bucket: bucket1
+
 s3:
-  access_key_id:
-  secret_access_key:
+  region: us-east-1
+  access_key_id: rustfsadmin
+  secret_access_key: rustfsadmin # pragma: allowlist secret
