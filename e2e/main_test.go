@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -44,13 +43,12 @@ func init() {
 }
 
 func newHTTPClient() *http.Client {
-
 	return &http.Client{Timeout: requestTimeout}
 }
 
 func canPing() bool {
-	resp, err := http.Get(baseUrl + "/ping")
-	return err == nil && resp.StatusCode == http.StatusOK
+	res, err := http.Get(baseUrl + "/ping")
+	return err == nil && res.StatusCode == http.StatusOK
 }
 
 func canListFiles() bool {
@@ -161,16 +159,14 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
-	partialListFilesResponse := []PartialListFileResponse{}
+	partialListFilesResponse := PartialListFilesResponse{}
 	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
 	assertNoError(res.Body.Close())
 	assert.NoError(t, err)
 	assert.True(t, len(partialListFilesResponse) > 0)
-	idx := slices.IndexFunc(partialListFilesResponse, func(o PartialListFileResponse) bool {
-		return o.FileName == key.String()
-	})
-	assert.NotEqual(t, -1, idx)
-	assert.Len(t, partialListFilesResponse[idx].Approvals, 0)
+	partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
+	assert.True(t, exists)
+	assert.Len(t, partialListFileResponse.Approvals, 0)
 
 	// Approve uploaded file
 	req = must(http.NewRequest(
@@ -178,7 +174,6 @@ func TestApprovalAndEgressS3(t *testing.T) {
 		fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
 		makeRequestBodyF(`{"user_id": "%s"}`, userId),
 	))
-	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	res = must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
@@ -192,10 +187,9 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	res = must(client.Do(req))
 	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
 	assertNoError(res.Body.Close())
-	idx = slices.IndexFunc(partialListFilesResponse, func(o PartialListFileResponse) bool {
-		return o.FileName == key.String()
-	})
-	assert.Len(t, partialListFilesResponse[idx].Approvals, 1)
+	partialListFileResponse, exists = partialListFilesResponse.FileByFilename(key.String())
+	assert.True(t, exists)
+	assert.Len(t, partialListFileResponse.Approvals, 1)
 
 	// The one file can now be downloaded
 	req = must(http.NewRequest(
@@ -220,9 +214,4 @@ func stripQuotes(s string) string {
 
 func makeRequestBodyF(format string, objs ...any) io.Reader {
 	return strings.NewReader(fmt.Sprintf(format, objs...))
-}
-
-type PartialListFileResponse struct {
-	FileName  string   `json:"file_name"`
-	Approvals []string `json:"approvals"`
 }

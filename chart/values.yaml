@@ -21,7 +21,7 @@ service:
 
 dev:
   # Will expect to be able to mount in this repository under /repo
-  hot_reload: true
+  hot_reload: false
   s3:
     # URL override for S3. Required for rustfs
     url: null

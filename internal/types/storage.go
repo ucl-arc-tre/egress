@@ -4,13 +4,13 @@ import (
 	"net/url"
 )
 
+type StorageBackendKind string
+
 const (
 	StorageBackendKindS3      = StorageBackendKind("s3")
 	StorageBackendKindGeneric = StorageBackendKind("generic")
 	StorageBackendKindUnknown = StorageBackendKind("unknown")
 )
-
-type StorageBackendKind string
 
 // Location URI for a storage backend
 // e.g.
