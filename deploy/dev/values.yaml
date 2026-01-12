@@ -16,9 +16,15 @@ service:
   nodePort: 30001
   port: 80
 
-dev: true
+dev:
+  hot_reload: true
+  s3:
+    url: "http://rustfs-svc.rustfs.svc.cluster.local:9000"
+    bucket: bucket1
+
 debug: true
 
 s3:
-  access_key_id:
-  secret_access_key:
+  region: us-east-1
+  access_key_id: rustfsadmin
+  secret_access_key: rustfsadmin # pragma: allowlist secret

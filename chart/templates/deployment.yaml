@@ -54,7 +54,7 @@ spec:
             - name: config
               mountPath: /etc/egress
               readOnly: true
-          {{- if .Values.dev }}
+          {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
             - name: repo
               mountPath: /repo
               readOnly: false
@@ -70,7 +70,7 @@ spec:
         - name: config
           secret:
             secretName: {{ $name }}-config
-      {{- if .Values.dev }}
+      {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
         - name: repo
           hostPath:
              path: "/repo"

@@ -53,9 +53,22 @@ func IsDebug() bool {
 
 func S3Credentials() S3CredentialBundle {
 	return S3CredentialBundle{
+		Region:          k.String("s3.region"),
 		AccessKeyId:     k.String("s3.access_key_id"),
 		SecretAccessKey: k.String("s3.secret_access_key"),
 	}
+}
+
+func DevS3URL() string {
+	return k.String("dev.s3.url")
+}
+
+func DevS3Bucket() string {
+	return k.String("dev.s3.bucket")
+}
+
+func IsDevS3() bool {
+	return DevS3URL() != ""
 }
 
 func envOrDefault(key string, defaultValue string) string {

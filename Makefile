@@ -5,6 +5,8 @@ K3D_CLUSTER_NAME := "ucl-arc-tre-egress"
 K3D_K3S_IMAGE_VERSION := rancher/k3s:v1.34.2-k3s1
 DEV_NODEPORT := 30001
 DEV_EXTERNAL_PORT := 8080
+DEV_RUSTFS_NODEPORT := 32000
+DEV_RUSTFS_EXTERNAL_PORT := 8081
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
@@ -28,13 +30,13 @@ codegen:  ## Run code generation
 test-unit:  ## Run unit tests
 	go test ./internal/...
 
-test-e2e: dev-k3d ## Run end-to-end tests
+test-e2e: dev-k3d dev-rustfs ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
 	go test ./e2e/...
 
-dev: dev-k3d ## Deploy dev env
+dev: dev-requirements dev-k3d dev-rustfs ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
@@ -53,6 +55,7 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--servers 1 \
 		--agents 0 \
 		--port "${DEV_EXTERNAL_PORT}:${DEV_NODEPORT}@server:0:direct" \
+		--port "${DEV_RUSTFS_EXTERNAL_PORT}:${DEV_RUSTFS_NODEPORT}@server:0:direct" \
 		--k3s-arg="--disable=traefik@server:*" \
 		--k3s-arg="--disable=metrics-server@server:*" \
 		--k3s-arg="--disable-cloud-controller@server:*" \
@@ -64,8 +67,17 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 	fi
 	k3d kubeconfig get $(K3D_CLUSTER_NAME) > $(DEV_KUBECONFIG_PATH)
 
+dev-rustfs: ## Install rustfs as an S3 compatible object store
+	helm repo add rustfs https://charts.rustfs.com
+	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
+	  --set mode.standalone.enabled=true \
+	  --set replicaCount=1 \
+	  --set service.type=NodePort \
+      --set mode.distributed.enabled=false
+
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
 	$(call assert_command_exists, k3d, "Please install k3d: https://k3d.io/stable/#installation")
+	$(call assert_command_exists, helm, "Please install helm: https://helm.sh/docs/intro/install/")
 
 .SILENT:  # all targets
