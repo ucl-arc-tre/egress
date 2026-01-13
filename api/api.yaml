@@ -8,6 +8,8 @@ info:
     url: https://opensource.org/license/bsd-3-clause
 servers:
   - url: /v0
+security:
+  - basicAuth: []
 paths:
   /{project-id}/files:
     get:
@@ -29,6 +31,8 @@ paths:
                 $ref: '#/components/schemas/FileListResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /{project-id}/files/{file-id}/approve:
     put:
@@ -47,6 +51,8 @@ paths:
           description: File successfully approved
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -72,10 +78,18 @@ paths:
                 format: binary
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
 components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: HTTP Basic authentication
+
   parameters:
     ProjectIdParam:
       name: project-id
@@ -173,6 +187,16 @@ components:
   responses:
     BadRequest:
       description: Bad request; invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized; authentication required
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
       content:
         application/json:
           schema:
