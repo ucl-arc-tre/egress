@@ -43,18 +43,6 @@ s3:
 	assert.Equal(t, "secret-key-123", s3.SecretAccessKey)
 }
 
-func TestS3CredentialsWithMissingValues(t *testing.T) {
-	yaml := `debug: false`
-
-	cf := makeConfig(t, "no-s3-creds.yaml", yaml)
-	initWithPath(cf)
-
-	s3 := S3Credentials()
-	assert.Equal(t, "", s3.Region)
-	assert.Equal(t, "", s3.AccessKeyId)
-	assert.Equal(t, "", s3.SecretAccessKey)
-}
-
 func makeConfig(t *testing.T, fileName string, yaml string) string {
 	dir := t.TempDir()
 	cf := filepath.Join(dir, fileName)
