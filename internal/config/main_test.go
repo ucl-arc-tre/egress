@@ -43,6 +43,21 @@ s3:
 	assert.Equal(t, "secret-key-123", s3.SecretAccessKey)
 }
 
+func TestAuthBasicCredentials(t *testing.T) {
+	yaml := `
+auth:
+  basic:
+    username: "username123"
+    password: "password123"
+`
+	cf := makeConfig(t, "basic-auth.yaml", yaml)
+	initWithPath(cf)
+
+	auth := AuthBasicCredentials()
+	assert.Equal(t, "username123", auth.Username)
+	assert.Equal(t, "password123", auth.Password)
+}
+
 func makeConfig(t *testing.T, fileName string, yaml string) string {
 	dir := t.TempDir()
 	cf := filepath.Join(dir, fileName)

@@ -5,3 +5,8 @@ type S3CredentialBundle struct {
 	AccessKeyId     string
 	SecretAccessKey string
 }
+
+type AuthBasicCredentialsBundle struct {
+	Username string
+	Password string
+}
