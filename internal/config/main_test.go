@@ -30,13 +30,15 @@ func TestDebugTrue(t *testing.T) {
 func TestS3Credentials(t *testing.T) {
 	yaml := `
 s3:
+  region: "eu-west-1"
   access_key_id: "access-key-123"
   secret_access_key: "secret-key-123"
 `
-	cf := makeConfig(t, "s3-creds.yaml", yaml)
+	cf := makeConfig(t, "s3.yaml", yaml)
 	initWithPath(cf)
 
 	s3 := S3Credentials()
+	assert.Equal(t, "eu-west-1", s3.Region)
 	assert.Equal(t, "access-key-123", s3.AccessKeyId)
 	assert.Equal(t, "secret-key-123", s3.SecretAccessKey)
 }
@@ -48,6 +50,7 @@ func TestS3CredentialsWithMissingValues(t *testing.T) {
 	initWithPath(cf)
 
 	s3 := S3Credentials()
+	assert.Equal(t, "", s3.Region)
 	assert.Equal(t, "", s3.AccessKeyId)
 	assert.Equal(t, "", s3.SecretAccessKey)
 }
