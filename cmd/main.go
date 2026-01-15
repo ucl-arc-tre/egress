@@ -5,6 +5,7 @@ import (
 
 	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/handler"
+	"github.com/ucl-arc-tre/egress/internal/middleware"
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 	"github.com/ucl-arc-tre/egress/internal/router"
 
@@ -15,9 +16,11 @@ func main() {
 	config.Init()
 
 	router := router.New()
-	openapi.RegisterHandlersWithOptions(router, handler.New(), openapi.GinServerOptions{
-		BaseURL: config.BaseURL,
-	})
+	openapi.RegisterHandlersWithOptions(router, handler.New(),
+		openapi.GinServerOptions{
+			BaseURL:     config.BaseURL,
+			Middlewares: middleware.New(),
+		})
 
 	server := &http.Server{
 		Addr:              config.ServerAddress(),

@@ -27,6 +27,8 @@ const (
 
 var (
 	s3Location = fmt.Sprintf("s3://%s", bucketName)
+	username   = "egressuser"
+	password   = "egressuser" /* pragma: allowlist secret */
 )
 
 func init() {
@@ -58,6 +60,7 @@ func canListFiles() bool {
 	if err != nil {
 		return false
 	}
+	req.SetBasicAuth(username, password)
 	resp, err := newHTTPClient().Do(req)
 	return err == nil && resp.StatusCode == http.StatusOK
 }
@@ -124,6 +127,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			if tc.body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
+			req.SetBasicAuth(username, password)
 			res, err := client.Do(req)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
@@ -156,6 +160,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
 		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
 	))
+	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
@@ -175,6 +180,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 		makeRequestBodyF(`{"user_id": "%s"}`, userId),
 	))
 	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
 	res = must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 
@@ -184,6 +190,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
 		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
 	))
+	req.SetBasicAuth(username, password)
 	res = must(client.Do(req))
 	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
 	assertNoError(res.Body.Close())
@@ -202,10 +209,35 @@ func TestApprovalAndEgressS3(t *testing.T) {
 			100,
 		),
 	))
+	req.SetBasicAuth(username, password)
 	res = must(client.Do(req))
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	content := must(io.ReadAll(res.Body))
 	assert.Equal(t, fileContent, string(content))
+}
+
+func TestAuthFailureWithIncorrectUsername(t *testing.T) {
+	client := newHTTPClient()
+	req := must(http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
+		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+	))
+	req.SetBasicAuth("badUsername", password)
+	res := must(client.Do(req))
+	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+}
+
+func TestAuthFailureWithIncorrectPassword(t *testing.T) {
+	client := newHTTPClient()
+	req := must(http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
+		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+	))
+	req.SetBasicAuth(username, "badPassword")
+	res := must(client.Do(req))
+	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
 }
 
 func stripQuotes(s string) string {
