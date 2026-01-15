@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  version: 0.2.0-dev
+  version: 0.3.0-dev
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
