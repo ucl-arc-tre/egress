@@ -34,7 +34,7 @@ test-e2e: dev-k3d dev-rustfs ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
-	go test ./e2e/...
+	go test ./e2e/... -count=1
 
 dev: dev-requirements dev-k3d dev-rustfs ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .

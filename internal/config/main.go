@@ -59,6 +59,13 @@ func S3Credentials() S3CredentialBundle {
 	}
 }
 
+func AuthBasicCredentials() AuthBasicCredentialsBundle {
+	return AuthBasicCredentialsBundle{
+		Username: k.String("auth.basic.username"),
+		Password: k.String("auth.basic.password"),
+	}
+}
+
 func DevS3URL() string {
 	return k.String("dev.s3.url")
 }
