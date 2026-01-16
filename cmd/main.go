@@ -19,7 +19,7 @@ func main() {
 	openapi.RegisterHandlersWithOptions(router, handler.New(),
 		openapi.GinServerOptions{
 			BaseURL:     config.BaseURL,
-			Middlewares: middleware.New(),
+			Middlewares: middleware.All(),
 		})
 
 	server := &http.Server{
