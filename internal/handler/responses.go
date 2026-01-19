@@ -11,7 +11,7 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
-func setInvalidObject(ctx *gin.Context, message string) {
+func setBadRequest(ctx *gin.Context, message string) {
 	ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
 		Message: fmt.Sprintf("Invalid object. %s", message),
 	})
@@ -22,7 +22,7 @@ func setError(ctx *gin.Context, projectId string, err error, msg string) {
 	if errors.Is(err, types.ErrServer) {
 		statusCode = http.StatusInternalServerError
 	} else if errors.Is(err, types.ErrInvalidObject) {
-		statusCode = http.StatusNotAcceptable
+		statusCode = http.StatusBadRequest
 	} else if errors.Is(err, types.ErrNotFound) {
 		statusCode = http.StatusNotFound
 	} else {

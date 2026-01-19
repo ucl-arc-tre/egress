@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,7 +28,7 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 	data := openapi.ListFilesRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
 		log.Err(err).Any("projectId", projectId).Msg("Failed to bind request json")
-		setInvalidObject(ctx, "Failed to parse request body")
+		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
 
@@ -50,7 +49,7 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 	case types.StorageBackendKindS3:
 		filesMetadata, err = h.s3.List(ctx, *location)
 	default:
-		err = errors.New("unspported storage backend kind")
+		err = types.NewErrInvalidObjectF("unspported storage backend kind")
 	}
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to get list files from storage backend")
@@ -71,7 +70,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 	data := openapi.DownloadFileRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
 		log.Err(err).Any("projectId", projectId).Any("fileId", fileId).Msg("Failed to bind download request json")
-		setInvalidObject(ctx, "Failed to parse request body")
+		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
 
@@ -82,8 +81,8 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 	}
 	fileApprovals, exists := projectApprovals[types.FileId(fileId)]
 	if !exists {
-		ctx.JSON(http.StatusNotFound, openapi.NotFound{})
-		return
+		log.Debug().Any("fileId", fileId).Msg("File had no approvals")
+		fileApprovals = types.FileApprovals{}
 	}
 	if numApprovals := len(fileApprovals); numApprovals < data.RequiredApprovals {
 		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
@@ -103,7 +102,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 	case types.StorageBackendKindS3:
 		file, err = h.s3.Get(ctx, *location, types.FileId(fileId))
 	default:
-		err = errors.New("unspported storage backend kind")
+		err = types.NewErrInvalidObjectF("unspported storage backend kind")
 	}
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to get list files from storage")
@@ -136,7 +135,7 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 	data := openapi.ApproveFileRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
 		log.Err(err).Any("projectId", projectId).Msg("Failed to bind approve file json")
-		setInvalidObject(ctx, "Failed to parse request body")
+		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
 	err := h.db.ApproveFile(

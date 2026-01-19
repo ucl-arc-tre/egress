@@ -13,7 +13,7 @@ import (
 )
 
 type Storage struct {
-	client *awsS3.Client
+	client ClientInterface
 }
 
 func New() *Storage {
