@@ -9,7 +9,7 @@
 ### Unacceptable behaviour
 - Harassment, threats, hateful or sexually explicit language, doxxing, or sustained disruptive conduct.
 - Posting or attempting to share production-sensitive datasets, credentials, or other secrets in public channels or PRs.
-- Coercing maintainers to grant TRE access outside established processes.
+- Coercion of any kind.
 
 ### Reporting
 - For general conduct reports email arc.tre[at]ucl.ac.uk.
