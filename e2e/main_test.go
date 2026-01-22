@@ -35,7 +35,7 @@ func init() {
 	timeout := time.Now().Add(serviceUpTimeout)
 	for {
 		if time.Now().After(timeout) {
-			panic("timed out waiting for ping")
+			panic("timed out waiting for service readiness")
 		}
 		if canPing() && canListFiles() {
 			return

@@ -19,4 +19,7 @@ func ping(ctx *gin.Context) {
 
 func ready(ctx *gin.Context) {
 	ctx.Status(http.StatusOK)
+	if !isDBReady()() {
+		ctx.Status(http.StatusServiceUnavailable)
+	}
 }
