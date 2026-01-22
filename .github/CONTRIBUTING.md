@@ -7,10 +7,6 @@ Thanks for contributing! This repository supports contributions from developers 
 - Using sensitive data, that otherwise can only be used in a TRE, for dev/test is not permitted.
 
 2. Legal & onboarding
-<!--
-- Sign the Contributor License Agreement (CLA).
--->
-- Complete the short security & privacy orientation: /SECURITY_ORIENTATION.md
 - By contributing you agree to the BSD 3-Clause License project license and to follow our Code of Conduct: CODE_OF_CONDUCT.md
 - Enable [commit verification](https://docs.github.com/en/authentication/managing-commit-signature-verification) to ensure commit provenance.
 
@@ -37,6 +33,7 @@ Thanks for contributing! This repository supports contributions from developers 
 - The service runs in a container with a default deny network policy.
 - Resource quotas: CPU, memory are set.
 - No use of privileged syscalls or devices.
+Contributions that violate these constraints will be rejected.
 
 9. Review & merge policy
 - All PRs require at least two maintainer reviews.

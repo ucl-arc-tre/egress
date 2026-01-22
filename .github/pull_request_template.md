@@ -11,8 +11,8 @@ Summary
 ### Checklist
 
 - [ ] Documentation has been updated
-- [ ] Tests pass
-- [ ] [e2e tests](https://github.com/ucl-arc-tre/egress/tree/main/e2e) have been added/updated if required
+- [ ] [e2e tests](https://github.com/ucl-arc-tre/egress/tree/main/e2e) have been added/updated, if required
+- [ ] Migration path is described, if required
 
 ### Risk assessment
 
