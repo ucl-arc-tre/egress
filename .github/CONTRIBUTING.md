@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thanks for contributing! This repository supports contributions from developers external to UCL. Because the project has access to potentially sensitive data in a Trusted Research Environment (TRE), we enforce extra security, privacy, and provenance controls. Please read this document before opening issues or pull requests.
+Thanks for contributing! This repository supports contributions from developers external to UCL. Because deployments of the project have access to potentially sensitive data in a Trusted Research Environment (TRE), we enforce extra security, privacy, and provenance controls. Please read this document before opening issues or pull requests.
 
 1. Scope & expectations
 - We use least-privilege, defense-in-depth, and provenance principles.
@@ -18,7 +18,7 @@ Thanks for contributing! This repository supports contributions from developers 
 4. Branching & pull requests
 - The `main` branch is protected. All direct pushes are disallowed.
 - Open a Pull Request (PR) from your branch. PR title should be concise and reference any related issue e.g. `Fix: improve docs`.
-- Fill out the PR template with a short summary and risk assessment.
+- Fill out the PR template with required details.
 - Include a migration plan or rollback steps if applicable.
 
 6. Security & privacy requirements (must-haves)
