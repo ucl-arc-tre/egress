@@ -4,7 +4,7 @@
 
 - Be respectful, assume good faith, and focus on technical issues.
 - Use inclusive language and avoid discriminatory or demeaning remarks.
-- Protect privacy: do not post others’ personal information or production-sensitive data, credentials, or secrets.
+- Protect privacy by not posting others’ personal information or production-sensitive data, credentials, or secrets.
 
 ### Unacceptable behaviour
 - Harassment, threats, hateful or sexually explicit language, doxxing, or sustained disruptive conduct.

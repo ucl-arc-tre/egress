@@ -4,6 +4,7 @@ Thanks for contributing! This repository supports contributions from developers 
 
 1. Scope & expectations
 - We use least-privilege, defense-in-depth, and provenance principles.
+- Using sensitive data, that otherwise can only be used in a TRE, for dev/test is not permitted.
 
 2. Legal & onboarding
 <!--
