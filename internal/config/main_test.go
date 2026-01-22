@@ -43,6 +43,26 @@ s3:
 	assert.Equal(t, "secret-key-123", s3.SecretAccessKey)
 }
 
+func TestDBConfig(t *testing.T) {
+	yaml := `
+db:
+  provider: "rqlite"
+  baseUrl: "http://rqlite.local"
+  username: "dbusername123"
+  password: "dbpassword123"
+  readinessProbe: "/ready"
+`
+	cf := makeConfig(t, "db.yaml", yaml)
+	initWithPath(cf)
+
+	db := DBConfig()
+	assert.Equal(t, "rqlite", db.Provider)
+	assert.Equal(t, "http://rqlite.local", db.BaseURL)
+	assert.Equal(t, "dbusername123", db.Username)
+	assert.Equal(t, "dbpassword123", db.Password)
+	assert.Equal(t, "/ready", db.ReadinessProbe)
+}
+
 func TestAuthBasicCredentials(t *testing.T) {
 	yaml := `
 auth:
