@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/ucl-arc-tre/egress/internal/db"
-	"github.com/ucl-arc-tre/egress/internal/db/inmemory"
+	"github.com/ucl-arc-tre/egress/internal/db/rqlite"
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 	"github.com/ucl-arc-tre/egress/internal/storage"
 	"github.com/ucl-arc-tre/egress/internal/storage/s3"
@@ -21,7 +21,12 @@ type Handler struct {
 }
 
 func New() *Handler {
-	return &Handler{db: inmemory.New(), s3: s3.New()}
+	//return &Handler{db: inmemory.New(), s3: s3.New()}
+	rqlite, err := rqlite.New("http://rqlite.rqlite.svc.cluster.local", "dbuser", "dbuser")
+	if err != nil {
+		panic(err)
+	}
+	return &Handler{db: rqlite, s3: s3.New()}
 }
 
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
