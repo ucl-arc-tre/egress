@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_file_approvals_project_id_file_id;
