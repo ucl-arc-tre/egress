@@ -18,9 +18,9 @@ type DB struct {
 }
 
 func New(baseURL, username, password string) (*DB, error) {
-	connURL, err := buildURLWithAuth(baseURL, username, password)
+	connURL, err := buildAuthURL(baseURL, username, password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build connection URL: %w", err)
+		return nil, fmt.Errorf("failed to build rqlite connection URL: %w", err)
 	}
 
 	conn, err := rq.Open(connURL)
@@ -28,7 +28,10 @@ func New(baseURL, username, password string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open rqlite connection: %w", err)
 	}
 
-	// Assume schema has been created prior
+	if err := applyMigrations(conn); err != nil {
+		return nil, fmt.Errorf("migration failed: %w", err)
+	}
+
 	db := &DB{conn: conn}
 	return db, nil
 }
@@ -40,7 +43,7 @@ func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId
 	}
 
 	wr, operr := db.conn.WriteOneParameterized(stmt)
-	err := unifyErrors("failed to execute insert", wr.Err, operr)
+	err := unifyErrors("failed to execute insert", operr, wr.Err)
 
 	return err
 }
@@ -52,7 +55,7 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	}
 
 	qr, operr := db.conn.QueryOneParameterized(stmt)
-	err := unifyErrors("failed to execute query", qr.Err, operr)
+	err := unifyErrors("failed to execute query", operr, qr.Err)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +80,7 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	return approvals, nil
 }
 
-func buildURLWithAuth(baseURL, username, password string) (string, error) {
+func buildAuthURL(baseURL, username, password string) (string, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid rqlite URL: %w", err)
@@ -89,7 +92,7 @@ func buildURLWithAuth(baseURL, username, password string) (string, error) {
 	return u.String(), nil
 }
 
-func unifyErrors(msg string, dberr, operr error) error {
+func unifyErrors(msg string, operr, dberr error) error {
 	f := "%s: %w"
 	if operr != nil { // First check for API call errors..
 		return fmt.Errorf(f, msg, operr)
