@@ -59,6 +59,16 @@ func S3Credentials() S3CredentialBundle {
 	}
 }
 
+func DBConfig() DBConfigBundle {
+	return DBConfigBundle{
+		Provider:       k.String("db.provider"),
+		BaseURL:        k.String("db.baseUrl"),
+		Username:       k.String("db.username"),
+		Password:       k.String("db.password"),
+		ReadinessProbe: k.String("db.readinessProbe"),
+	}
+}
+
 func AuthBasicCredentials() AuthBasicCredentialsBundle {
 	return AuthBasicCredentialsBundle{
 		Username: k.String("auth.basic.username"),
