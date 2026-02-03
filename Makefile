@@ -72,8 +72,10 @@ dev-rustfs: ## Install rustfs as an S3 compatible object store
 	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
 	  --set mode.standalone.enabled=true \
 	  --set replicaCount=1 \
+	  --set gatewayApi.enabled=false \
+	  --set gatewayApi.gatewayClass="" \
 	  --set service.type=NodePort \
-      --set mode.distributed.enabled=false
+	  --set mode.distributed.enabled=false
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
