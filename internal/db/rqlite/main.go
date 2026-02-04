@@ -29,10 +29,6 @@ func New(baseURL, username, password string) (*DB, error) {
 		return nil, fmt.Errorf("[rqlite] failed to open connection: %w", err)
 	}
 
-	if err := applyMigrations(conn); err != nil {
-		return nil, fmt.Errorf("[rqlite] migration failed: %w", err)
-	}
-
 	db := &DB{conn: conn}
 	return db, nil
 }

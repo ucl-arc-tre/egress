@@ -25,6 +25,9 @@ func New() *Handler {
 	if err != nil {
 		panic(err)
 	}
+	if err := db.Migrate(); err != nil {
+		panic(err)
+	}
 	return &Handler{db: db, s3: s3.New()}
 }
 
