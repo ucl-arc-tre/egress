@@ -10,7 +10,8 @@ import (
 
 const (
 	sqlApproveFile   = `INSERT INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
-	sqlFileApprovals = `SELECT file_id, user_id FROM file_approvals WHERE project_id = ? ORDER BY file_id, id`
+	sqlFileApprovals = `SELECT file_id, user_id FROM file_approvals WHERE project_id = ? ORDER BY file_id`
+	sqlIsReady       = `SELECT unixepoch("subsecond")`
 )
 
 type DB struct {
@@ -20,16 +21,16 @@ type DB struct {
 func New(baseURL, username, password string) (*DB, error) {
 	connURL, err := buildAuthURL(baseURL, username, password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build rqlite connection URL: %w", err)
+		return nil, fmt.Errorf("[rqlite] failed to build connection URL: %w", err)
 	}
 
 	conn, err := rq.Open(connURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open rqlite connection: %w", err)
+		return nil, fmt.Errorf("[rqlite] failed to open connection: %w", err)
 	}
 
 	if err := applyMigrations(conn); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
+		return nil, fmt.Errorf("[rqlite] migration failed: %w", err)
 	}
 
 	db := &DB{conn: conn}
@@ -43,7 +44,7 @@ func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId
 	}
 
 	wr, operr := db.conn.WriteOneParameterized(stmt)
-	err := unifyErrors("failed to execute insert", operr, wr.Err)
+	err := unifyErrors("[rqlite] failed to execute approve file insert", operr, wr.Err)
 
 	return err
 }
@@ -55,7 +56,7 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	}
 
 	qr, operr := db.conn.QueryOneParameterized(stmt)
-	err := unifyErrors("failed to execute query", operr, qr.Err)
+	err := unifyErrors("[rqlite] failed to execute approvals query", operr, qr.Err)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	for qr.Next() {
 		var fileIdStr, userIdStr string
 		if err := qr.Scan(&fileIdStr, &userIdStr); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, fmt.Errorf("[rqlite] failed to scan row: %w", err)
 		}
 
 		fileId := types.FileId(fileIdStr)
@@ -80,13 +81,22 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	return approvals, nil
 }
 
+func (db *DB) IsReady() bool {
+	stmt := rq.ParameterizedStatement{
+		Query: sqlIsReady,
+	}
+
+	qr, operr := db.conn.QueryOneParameterized(stmt)
+	return unifyErrors("[rqlite] failed to execute readiness query", operr, qr.Err) == nil
+}
+
 func buildAuthURL(baseURL, username, password string) (string, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return "", fmt.Errorf("invalid rqlite URL: %w", err)
+		return "", fmt.Errorf("[rqlite] invalid URL: %w", err)
 	}
 	if username == "" || password == "" {
-		return "", fmt.Errorf("insufficient rqlite credentials")
+		return "", fmt.Errorf("[rqlite] insufficient credentials")
 	}
 	u.User = url.UserPassword(username, password)
 	return u.String(), nil

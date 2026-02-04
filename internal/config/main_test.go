@@ -50,7 +50,6 @@ db:
   baseUrl: "http://rqlite.local"
   username: "dbusername123"
   password: "dbpassword123"
-  readinessProbe: "/ready"
 `
 	cf := makeConfig(t, "db.yaml", yaml)
 	initWithPath(cf)
@@ -60,7 +59,6 @@ db:
 	assert.Equal(t, "http://rqlite.local", db.BaseURL)
 	assert.Equal(t, "dbusername123", db.Username)
 	assert.Equal(t, "dbpassword123", db.Password)
-	assert.Equal(t, "/ready", db.ReadinessProbe)
 }
 
 func TestAuthBasicCredentials(t *testing.T) {

@@ -7,11 +7,10 @@ type S3CredentialBundle struct {
 }
 
 type DBConfigBundle struct {
-	Provider       string
-	BaseURL        string
-	Username       string
-	Password       string
-	ReadinessProbe string
+	Provider string
+	BaseURL  string
+	Username string
+	Password string
 }
 
 type AuthBasicCredentialsBundle struct {

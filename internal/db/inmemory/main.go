@@ -41,3 +41,7 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	}
 	return projectApprovals, nil
 }
+
+func (db *DB) IsReady() bool {
+	return true
+}
