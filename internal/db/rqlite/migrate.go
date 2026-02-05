@@ -6,7 +6,6 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	rqmig "github.com/golang-migrate/migrate/v4/database/rqlite"
-	_ "github.com/golang-migrate/migrate/v4/source/github"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
