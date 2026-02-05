@@ -156,3 +156,14 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 	}
 	ctx.Status(http.StatusNoContent)
 }
+
+func (h *Handler) Ready(ctx *gin.Context) {
+	ctx.Status(http.StatusOK)
+	if !h.db.IsReady() {
+		ctx.Status(http.StatusServiceUnavailable)
+	}
+}
+
+func (h *Handler) Ping(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
+}

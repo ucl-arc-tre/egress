@@ -15,8 +15,9 @@ import (
 func main() {
 	config.Init()
 
-	router := router.New()
-	openapi.RegisterHandlersWithOptions(router, handler.New(),
+	handler := handler.New()
+	router := router.New(handler)
+	openapi.RegisterHandlersWithOptions(router, handler,
 		openapi.GinServerOptions{
 			BaseURL:     config.BaseURL,
 			Middlewares: middleware.All(),

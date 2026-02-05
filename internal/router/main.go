@@ -1,25 +1,13 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"github.com/ucl-arc-tre/egress/internal/handler"
 )
 
-func New() *gin.Engine {
+func New(h *handler.Handler) *gin.Engine {
 	router := gin.Default()
-	router.Group("/ping").GET("", ping)
-	router.Group("/ready").GET("", ready)
+	router.Group("/ping").GET("", h.Ping)
+	router.Group("/ready").GET("", h.Ready)
 	return router
-}
-
-func ping(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
-}
-
-func ready(ctx *gin.Context) {
-	ctx.Status(http.StatusOK)
-	if !isDBReady()() {
-		ctx.Status(http.StatusServiceUnavailable)
-	}
 }
