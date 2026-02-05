@@ -7,6 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	rqmig "github.com/golang-migrate/migrate/v4/database/rqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed migrations/*.sql
@@ -31,5 +32,7 @@ func (db *DB) Migrate() error {
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange && err != migrate.ErrNilVersion {
 		return fmt.Errorf("[rqlite] failed to apply migrations: %w", err)
 	}
+
+	log.Info().Msg("[rqlite] migrations applied successfully")
 	return nil
 }

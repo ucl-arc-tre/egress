@@ -8,12 +8,6 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
-const (
-	sqlApproveFile   = `INSERT INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
-	sqlFileApprovals = `SELECT file_id, user_id FROM file_approvals WHERE project_id = ? ORDER BY file_id`
-	sqlIsReady       = `SELECT unixepoch("subsecond")`
-)
-
 type DB struct {
 	conn *rq.Connection
 }
@@ -34,9 +28,11 @@ func New(baseURL, username, password string) (*DB, error) {
 }
 
 func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId types.UserId) error {
+	sqlApproveFile := `INSERT INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
+
 	stmt := rq.ParameterizedStatement{
 		Query:     sqlApproveFile,
-		Arguments: []any{string(projectId), string(fileId), string(userId)},
+		Arguments: []any{projectId, fileId, userId},
 	}
 
 	wr, operr := db.conn.WriteOneParameterized(stmt)
@@ -46,9 +42,11 @@ func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId
 }
 
 func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, error) {
+	sqlFileApprovals := `SELECT file_id, user_id FROM file_approvals WHERE project_id = ? ORDER BY file_id`
+
 	stmt := rq.ParameterizedStatement{
 		Query:     sqlFileApprovals,
-		Arguments: []any{string(projectId)},
+		Arguments: []any{projectId},
 	}
 
 	qr, operr := db.conn.QueryOneParameterized(stmt)
@@ -78,11 +76,10 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 }
 
 func (db *DB) IsReady() bool {
-	stmt := rq.ParameterizedStatement{
-		Query: sqlIsReady,
-	}
+	sqlIsReady := `SELECT 1 FROM file_approvals LIMIT 1`
 
-	qr, operr := db.conn.QueryOneParameterized(stmt)
+	qr, operr := db.conn.QueryOne(sqlIsReady)
+
 	return unifyErrors("[rqlite] failed to execute readiness query", operr, qr.Err) == nil
 }
 
