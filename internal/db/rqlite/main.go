@@ -91,9 +91,7 @@ func buildAuthURL(baseURL, username, password string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("[rqlite] invalid URL: %w", err)
 	}
-	if username == "" || password == "" {
-		return "", fmt.Errorf("[rqlite] insufficient credentials")
-	}
+
 	u.User = url.UserPassword(username, password)
 	return u.String(), nil
 }

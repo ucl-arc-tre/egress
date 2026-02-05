@@ -20,12 +20,6 @@ func TestAuthUrlsBadURL(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAuthUrlsInsufficientCreds(t *testing.T) {
-	_, err := buildAuthURL("http://dbserver.local", "foo", "")
-
-	assert.Error(t, err)
-}
-
 func TestUnifyErrorsWithOpError(t *testing.T) {
 	operr := errors.New("operation error")
 	err := unifyErrors("failed", operr, nil)
