@@ -21,13 +21,13 @@ func Provider(cfg config.DBConfigBundle) (Interface, error) {
 		return inmemory.New(), nil
 
 	case DBProviderRqlite:
-		db, err := rqlite.New(cfg.BaseURL, cfg.Username, cfg.Password)
+		db, err := rqlite.New(cfg.Rqlite.BaseURL, cfg.Rqlite.Username, cfg.Rqlite.Password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialise rqlite: %w", err)
 		}
 		return db, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported database provider %s", cfg.Provider)
 	}
+	// An unsupported provider shoudld have been failed by Helm
+	// So, this is fallback
+	return nil, fmt.Errorf("unsupported database provider %s", cfg.Provider)
 }

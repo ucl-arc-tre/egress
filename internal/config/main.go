@@ -60,12 +60,17 @@ func S3Credentials() S3CredentialBundle {
 }
 
 func DBConfig() DBConfigBundle {
-	return DBConfigBundle{
-		Provider: k.String("db.provider"),
-		BaseURL:  k.String("db.baseUrl"),
-		Username: k.String("db.username"),
-		Password: k.String("db.password"),
+	provider := k.String("db.provider")
+	cfg := DBConfigBundle{Provider: provider}
+
+	if provider == "rqlite" {
+		cfg.Rqlite = RqliteConfig{
+			BaseURL:  k.String("db.rqlite.baseUrl"),
+			Username: k.String("db.rqlite.username"),
+			Password: k.String("db.rqlite.password"),
+		}
 	}
+	return cfg
 }
 
 func AuthBasicCredentials() AuthBasicCredentialsBundle {

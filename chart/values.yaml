@@ -39,10 +39,12 @@ s3:
 
 # DB configuration
 db:
+  # One of: inmemory, rqlite
   provider: null
-  baseUrl: null
-  username: null
-  password: null
+  rqlite:
+    baseUrl: null
+    username: null
+    password: null
 
 # Auth configuration
 auth:

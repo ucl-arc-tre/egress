@@ -23,9 +23,10 @@ s3:
 
 db:
   provider: rqlite
-  baseUrl: http://rqlite.rqlite.svc.cluster.local
-  username: dbuser
-  password: dbuser # pragma: allowlist secret
+  rqlite:
+    baseUrl: http://rqlite.rqlite.svc.cluster.local
+    username: dbuser
+    password: dbuser # pragma: allowlist secret
 
 auth:
   basic:

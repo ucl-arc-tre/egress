@@ -8,6 +8,10 @@ type S3CredentialBundle struct {
 
 type DBConfigBundle struct {
 	Provider string
+	Rqlite   RqliteConfig
+}
+
+type RqliteConfig struct {
 	BaseURL  string
 	Username string
 	Password string
