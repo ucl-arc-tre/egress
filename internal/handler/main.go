@@ -158,10 +158,11 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 }
 
 func (h *Handler) Ready(ctx *gin.Context) {
-	ctx.Status(http.StatusOK)
 	if !h.db.IsReady() {
 		ctx.Status(http.StatusServiceUnavailable)
+		return
 	}
+	ctx.Status(http.StatusOK)
 }
 
 func (h *Handler) Ping(ctx *gin.Context) {
