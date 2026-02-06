@@ -7,6 +7,8 @@ DEV_NODEPORT := 30001
 DEV_EXTERNAL_PORT := 8080
 DEV_RUSTFS_NODEPORT := 32000
 DEV_RUSTFS_EXTERNAL_PORT := 8081
+DEV_RQLITE_USERNAME := "dbuser"
+DEV_RQLITE_PASSWORD := "dbuser"
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
@@ -30,13 +32,13 @@ codegen:  ## Run code generation
 test-unit:  ## Run unit tests
 	go test ./internal/...
 
-test-e2e: dev-k3d dev-rustfs ## Run end-to-end tests
+test-e2e: dev-k3d dev-rustfs dev-rqlite ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
 	go test ./e2e/... -count=1
 
-dev: dev-requirements dev-k3d dev-rustfs ## Deploy dev env
+dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm
@@ -76,6 +78,15 @@ dev-rustfs: ## Install rustfs as an S3 compatible object store
 	  --set gatewayApi.gatewayClass="" \
 	  --set service.type=NodePort \
 	  --set mode.distributed.enabled=false
+
+dev-rqlite: ## Install rqlite for storing persistent state
+	helm repo add rqlite https://rqlite.github.io/helm-charts
+	helm upgrade rqlite rqlite/rqlite -n rqlite --create-namespace --install \
+	  --set-json='config.users[0].username=$(DEV_RQLITE_USERNAME)' \
+	  --set-json='config.users[0].password=$(DEV_RQLITE_PASSWORD)' \
+	  --set-json='config.users[0].perms=["all"]' \
+	  --set replicaCount=1 \
+	  --set service.type=ClusterIP
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")

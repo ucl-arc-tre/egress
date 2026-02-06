@@ -35,7 +35,7 @@ func init() {
 	timeout := time.Now().Add(serviceUpTimeout)
 	for {
 		if time.Now().After(timeout) {
-			panic("timed out waiting for ping")
+			panic("timed out waiting for service readiness")
 		}
 		if canPing() && canListFiles() {
 			return
@@ -214,6 +214,35 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	content := must(io.ReadAll(res.Body))
 	assert.Equal(t, fileContent, string(content))
+}
+
+func TestApprovalIdempotency(t *testing.T) {
+	userId := uuid.New().String()
+	approve_url := fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0004", "f0004")
+
+	client := newHTTPClient()
+
+	// First pass
+	req := must(http.NewRequest(
+		http.MethodPut,
+		approve_url,
+		makeRequestBodyF(`{"user_id": "%s"}`, userId),
+	))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
+	res := must(client.Do(req))
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+
+	// Second pass, with same project-id, file-id, user-id
+	req = must(http.NewRequest(
+		http.MethodPut,
+		approve_url,
+		makeRequestBodyF(`{"user_id": "%s"}`, userId),
+	))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
+	res = must(client.Do(req))
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 }
 
 func TestAuthFailureWithIncorrectUsername(t *testing.T) {

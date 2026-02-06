@@ -6,6 +6,17 @@ type S3CredentialBundle struct {
 	SecretAccessKey string
 }
 
+type DBConfigBundle struct {
+	Provider string
+	Rqlite   RqliteConfig
+}
+
+type RqliteConfig struct {
+	BaseURL  string
+	Username string
+	Password string
+}
+
 type AuthBasicCredentialsBundle struct {
 	Username string
 	Password string
