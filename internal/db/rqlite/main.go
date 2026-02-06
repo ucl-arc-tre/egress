@@ -28,7 +28,7 @@ func New(baseURL, username, password string) (*DB, error) {
 }
 
 func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId types.UserId) error {
-	sqlApproveFile := `INSERT INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
+	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
 
 	stmt := rq.ParameterizedStatement{
 		Query:     sqlApproveFile,
