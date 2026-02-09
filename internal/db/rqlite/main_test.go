@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func TestAuthUrls(t *testing.T) {
@@ -21,17 +22,15 @@ func TestAuthUrlsBadURL(t *testing.T) {
 }
 
 func TestUnifyErrorsWithOpError(t *testing.T) {
-	operr := errors.New("operation error")
-	err := unifyErrors("failed", operr, nil)
+	err := unifyErrors("failed", errors.New("operation error"), nil)
 
 	assert.Error(t, err)
-	assert.Equal(t, operr, errors.Unwrap(err))
+	assert.Equal(t, types.ErrServer, errors.Unwrap(err))
 }
 
 func TestUnifyErrorsWithDBError(t *testing.T) {
-	dberr := errors.New("database error")
-	err := unifyErrors("failed", nil, dberr)
+	err := unifyErrors("failed", nil, errors.New("database error"))
 
 	assert.Error(t, err)
-	assert.Equal(t, dberr, errors.Unwrap(err))
+	assert.Equal(t, types.ErrServer, errors.Unwrap(err))
 }
