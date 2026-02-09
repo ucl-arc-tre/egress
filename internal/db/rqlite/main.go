@@ -80,7 +80,7 @@ func (db *DB) IsReady() bool {
 
 	qr, operr := db.conn.QueryOne(sqlIsReady)
 
-	return unifyErrors("[rqlite] failed to execute readiness query", operr, qr.Err) == nil
+	return operr == nil && qr.Err == nil
 }
 
 func buildAuthURL(baseURL, username, password string) (string, error) {
@@ -94,12 +94,11 @@ func buildAuthURL(baseURL, username, password string) (string, error) {
 }
 
 func unifyErrors(msg string, operr, dberr error) error {
-	f := "%s: %w"
-	if operr != nil { // First check for API call errors..
-		return fmt.Errorf(f, msg, operr)
+	if operr != nil { // First check for connection errors..
+		return types.NewErrServerF("%s: %w", msg, operr)
 	}
 	if dberr != nil { // ..then check for DB errors
-		return fmt.Errorf(f, msg, dberr)
+		return types.NewErrServerF("%s: %w", msg, dberr)
 	}
 	return nil
 }
