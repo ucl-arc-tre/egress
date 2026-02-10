@@ -8,10 +8,14 @@ on top of a storage backend to track file approvals prior to download.
 
 ## Installation
 
+Install using [helm](https://helm.sh/)
+
 ```bash
 helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
-  --version 0.2.0
+  --version 0.3.0
 ```
+
+see [chart/values.yaml](./chart/values.yaml) for values.
 
 ## Architecture
 
