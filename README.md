@@ -22,7 +22,7 @@ see [chart/values.yaml](./chart/values.yaml) for values.
 ### Database backends
 
 - In memory (dev only): Beta
-- [Rqlite](https://github.com/rqlite/rqlite): Planned
+- [Rqlite](https://github.com/rqlite/rqlite): Beta
 - [Postgres](https://github.com/postgres/postgres): Planned
 
 ### Storage backends
