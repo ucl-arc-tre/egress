@@ -37,6 +37,15 @@ s3:
   access_key_id: null
   secret_access_key: null
 
+# DB configuration
+db:
+  # One of: inmemory, rqlite
+  provider: null
+  rqlite:
+    baseUrl: null
+    username: null
+    password: null
+
 # Auth configuration
 auth:
   basic:

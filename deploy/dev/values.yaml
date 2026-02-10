@@ -29,6 +29,13 @@ s3:
   access_key_id: rustfsadmin
   secret_access_key: rustfsadmin # pragma: allowlist secret
 
+db:
+  provider: rqlite
+  rqlite:
+    baseUrl: http://rqlite.rqlite.svc.cluster.local
+    username: dbuser
+    password: dbuser # pragma: allowlist secret
+
 auth:
   basic:
     username: egressuser

@@ -41,3 +41,12 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	}
 	return projectApprovals, nil
 }
+
+func (db *DB) Migrate() error {
+	// NO-OP for inmemory database
+	return nil
+}
+
+func (db *DB) IsReady() bool {
+	return true
+}

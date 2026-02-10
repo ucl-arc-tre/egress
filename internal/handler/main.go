@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/db"
-	"github.com/ucl-arc-tre/egress/internal/db/inmemory"
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 	"github.com/ucl-arc-tre/egress/internal/storage"
 	"github.com/ucl-arc-tre/egress/internal/storage/s3"
@@ -21,7 +21,14 @@ type Handler struct {
 }
 
 func New() *Handler {
-	return &Handler{db: inmemory.New(), s3: s3.New()}
+	db, err := db.Provider(config.DBConfig())
+	if err != nil {
+		panic(err)
+	}
+	if err := db.Migrate(); err != nil {
+		panic(err)
+	}
+	return &Handler{db: db, s3: s3.New()}
 }
 
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
@@ -148,4 +155,16 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		return
 	}
 	ctx.Status(http.StatusNoContent)
+}
+
+func (h *Handler) Ready(ctx *gin.Context) {
+	if !h.db.IsReady() {
+		ctx.Status(http.StatusServiceUnavailable)
+		return
+	}
+	ctx.Status(http.StatusOK)
+}
+
+func (h *Handler) Ping(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
