@@ -14,10 +14,10 @@ type DBConfigBundle struct {
 type RqliteConfig struct {
 	BaseURL  string
 	Username string
-	Password string
+	Password string // #nosec G117 -- read only from k8s Secret
 }
 
 type AuthBasicCredentialsBundle struct {
 	Username string
-	Password string
+	Password string // #nosec G117 -- read only from k8s Secret
 }
