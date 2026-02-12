@@ -111,9 +111,9 @@ components:
     ListFilesRequest:
       type: object
       required:
-        - file_location
+        - files_location
       properties:
-        file_location:
+        files_location:
           type: string
           description: Location (i.e. path) of files to list
 

@@ -55,7 +55,7 @@ func canPing() bool {
 
 func canListFiles() bool {
 	url := fmt.Sprintf("%s/%s/files", baseApiUrl, "p001")
-	body := strings.NewReader(fmt.Sprintf(`{"file_location":"%s"}`, s3Location))
+	body := strings.NewReader(fmt.Sprintf(`{"files_location":"%s"}`, s3Location))
 	req, err := http.NewRequest(http.MethodGet, url, body)
 	if err != nil {
 		return false
@@ -82,7 +82,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFileList",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-			body:   makeRequestBodyF(`{"file_location":"%s"}`, s3Location),
+			body:   makeRequestBodyF(`{"files_location":"%s"}`, s3Location),
 
 			expectedStatusCode: http.StatusOK,
 		},
@@ -158,7 +158,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
 	))
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
@@ -188,7 +188,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	req = must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
 	))
 	req.SetBasicAuth(username, password)
 	res = must(client.Do(req))
@@ -250,7 +250,7 @@ func TestAuthFailureWithIncorrectUsername(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
 	))
 	req.SetBasicAuth("badUsername", password)
 	res := must(client.Do(req))
@@ -262,7 +262,7 @@ func TestAuthFailureWithIncorrectPassword(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"file_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
 	))
 	req.SetBasicAuth(username, "badPassword")
 	res := must(client.Do(req))
