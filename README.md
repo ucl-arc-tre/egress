@@ -15,17 +15,8 @@ helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
   --version 0.3.0
 ```
 
-see [chart/values.yaml](./chart/values.yaml) for values.
+See [chart/values.yaml](./chart/values.yaml) for values.
 
 ## Architecture
 
-### Database backends
-
-- In memory (dev only): Beta
-- [Rqlite](https://github.com/rqlite/rqlite): Beta
-- [Postgres](https://github.com/postgres/postgres): Planned
-
-### Storage backends
-
-- S3: Beta
-- Generic API: Planned
+See the documentation on [component architecture](./docs/design/architecture.md) and [operation flows](./docs/design/operations.md) for details.
