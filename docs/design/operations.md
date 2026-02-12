@@ -4,7 +4,7 @@ This document provides an operational view of the UCL ARC TRE Egress service.
 
 ## Overview
 
-The Egress service provides a controlled file download mechanism with an approval workflow. Files are stored in a supported storage backend (e.g. an S3 compatible service) and require approval before they can be donwloaded. The required approvals are tracked in a database.
+The Egress service provides a controlled file download mechanism with an approval workflow. Files are stored in a supported storage backend (e.g. an S3 compatible service) and require approval before they can be downloaded. The required approvals are tracked in a database.
 
 **Note:** A formal specification of the Egress service API is available [here](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/ucl-arc-tre/egress/refs/heads/main/api/api.yaml).
 
@@ -23,7 +23,7 @@ sequenceDiagram
     participant Database
     participant S3Storage
 
-    Client->>Handler: GET /{project-id}/files<br/>body={file_location}
+    Client->>Handler: GET /{project-id}/files<br/>body={files_location}
 
     activate Handler
     Handler->>Handler: Parse request

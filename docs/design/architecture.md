@@ -10,7 +10,7 @@ The Egress service is an internal backend API providing a layer on top of a stor
 
 ```mermaid
 graph TB
-    subgraph "Egress Frontend"
+    subgraph "Backend Egress Consumer"
         Client["HTTP Client"]
     end
 
@@ -91,8 +91,7 @@ graph TB
 ### Service Layer
 
 #### Handler
-- **Responsibilities**:
-  - Perform egress logic for API endpoints
+- **Responsibilities**: Perform egress logic for API endpoints
   - Validate file approvals before allowing downloads
   - Check file size limits and approval requirements
   - Stream file content to clients
@@ -123,7 +122,7 @@ graph TB
 
 #### Storage Interface
 - **Implementations**:
-  - **S3**: AWS S3 storage using AWS SDK v2 (connects to [rustf](https://rustfs.com/) in development)
+  - **S3**: AWS S3 storage using AWS SDK v2 (connects to [rustfs](https://rustfs.com/) in development)
   - **Generic storage API**: _Planned_
 
 ## Configuration
