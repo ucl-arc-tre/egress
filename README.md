@@ -6,6 +6,9 @@
 UCL ARC TRE egress service is an internal API which provides a layer
 on top of a storage backend to track file approvals prior to download.
 
+See Egress service [system context](./docs/context/README.md) for an overview
+of how this service interracts with other systems and actors.
+
 ## Installation
 
 Install using [helm](https://helm.sh/)
