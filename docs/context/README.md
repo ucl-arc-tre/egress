@@ -79,8 +79,8 @@ sequenceDiagram
 
 - **Researcher**: User working with sensitive data in the TRE. Researcher typically initiates the process to egress one or more files in the TRE.
 - **Egress Checker**: User authorised to approve files for egress.
-- **TRE**: Truest Research Environment where Researcher works with sensitve data. Egress Checker also has access to the TRE to allow them to review content of files prior to approving them for egress.
-- **Egress App Frontend**: Frontend portion of the web application used by Egress Checker to approve egress requests. This is likely a singe-page web frontend that communicates with the backend of the web app.
+- **TRE**: Trusted Research Environment where Researcher works with sensitve data. Egress Checker also has access to the TRE to allow them to review content of files prior to approving them for egress.
+- **Egress App Frontend**: Frontend portion of the web application used by Egress Checker to approve egress requests. This is likely a single-page web frontend that communicates with the backend of the web app.
 - **Egress App Backend**: Backend of the web application used by Egress Checker. The backend manages configuration (HTTP credentials, file location, approval thresholds, etc.) and communicates with the Egress service API. The backend also handles user authentication.
 - **Egress Service**: This service that provides core Egress functionality.
 
@@ -112,7 +112,7 @@ C4Context
         Component(backend, "Backend", "Web Backend", "Manages authentication, configuration<br/>and communicates with Egress Service")
     }
 
-    Rel(researcher, tre, "Works with sesitive data")
+    Rel(researcher, tre, "Works with sensitive data")
     Rel(researcher, checker, "Requests egress approval")
     Rel(researcher, frontend, "Downloads approved files")
     Rel(checker, tre, "Reviews egress files")
