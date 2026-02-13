@@ -6,6 +6,9 @@
 UCL ARC TRE egress service is an internal API which provides a layer
 on top of a storage backend to track file approvals prior to download.
 
+See Egress service [system context](./docs/context/README.md) for an overview
+of how this service interracts with other systems and actors.
+
 ## Installation
 
 Install using [helm](https://helm.sh/)
@@ -15,17 +18,8 @@ helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
   --version 0.3.0
 ```
 
-see [chart/values.yaml](./chart/values.yaml) for values.
+See [chart/values.yaml](./chart/values.yaml) for values.
 
 ## Architecture
 
-### Database backends
-
-- In memory (dev only): Beta
-- [Rqlite](https://github.com/rqlite/rqlite): Planned
-- [Postgres](https://github.com/postgres/postgres): Planned
-
-### Storage backends
-
-- S3: Beta
-- Generic API: Planned
+See the documentation on [component architecture](./docs/design/architecture.md) and [operation flows](./docs/design/operations.md) for details.

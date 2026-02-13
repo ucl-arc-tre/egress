@@ -45,7 +45,7 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 		return
 	}
 
-	location, err := storage.ParseLocation(data.FileLocation)
+	location, err := storage.ParseLocation(data.FilesLocation)
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to parse file location")
 		return

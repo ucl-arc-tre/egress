@@ -36,24 +36,24 @@ func TestGetFiles(t *testing.T) {
 		},
 		{
 			name:               "no s3 client",
-			body:               `{"file_location":"s3://bucket"}`,
+			body:               `{"files_location":"s3://bucket"}`,
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
 			name:               "invalid location",
-			body:               `{"file_location":"://bucket"}`,
+			body:               `{"files_location":"://bucket"}`,
 			s3client:           s3.MockClient{},
 			expectedStatusCode: 520,
 		},
 		{
 			name:               "unknown file location",
-			body:               `{"file_location":"unknown://bucket"}`,
+			body:               `{"files_location":"unknown://bucket"}`,
 			s3client:           s3.MockClient{},
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
 			name: "ok",
-			body: `{"file_location":"s3://bucket"}`,
+			body: `{"files_location":"s3://bucket"}`,
 			s3client: s3.MockClient{
 				Buckets: map[s3.MockBucketName]s3.MockBucket{
 					"bucket": {
