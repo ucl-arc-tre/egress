@@ -18,7 +18,6 @@ sequenceDiagram
         participant backend as Egress App Backend
     end
     participant egress as Egress Service
-    participant db as Database
     participant S3 as Storage
 
     Note over researcher,S3: Flow: Request Egress Approval
@@ -38,8 +37,6 @@ sequenceDiagram
     backend->>egress: list-files<br/>{HTTP-creds, project-id, files-location}
     egress->>S3: Get files
     S3-->>egress: File list
-    egress->>db: Get file metadata
-    db-->>egress: Metadata
     egress-->>backend: Files with metadata
     backend-->>frontend: Files with metadata
     frontend-->>checker: Files awaiting approval
@@ -53,8 +50,6 @@ sequenceDiagram
     checker->>frontend: Approve file
     frontend->>backend: Approve file<br/>{file-id}
     backend->>egress: approve-file<br/>{HTTP-creds, project-id, file-id, user-id}
-    egress->>db: Record approval
-    db-->>egress: Approval recorded OK
     egress-->>backend: Success
     backend-->>frontend: Approval confirmed
 
@@ -67,8 +62,6 @@ sequenceDiagram
     researcher->>frontend: Download file
     frontend->>backend: Download file<br/>{file-id}
     backend->>egress: Download file<br/>{HTTP-creds, project-id, file-id,<br/>files-location, required-approvals, max-file-size}
-    egress->>db: Get approval status
-    db-->>egress: Approval status
     egress->>S3: Get file
     S3-->>egress: File stream
     egress-->>backend: Stream file
@@ -83,10 +76,6 @@ sequenceDiagram
 - **Egress App Frontend**: Frontend portion of the web application used by Egress Checker to approve egress requests. This is likely a single-page web frontend that communicates with the backend of the web app.
 - **Egress App Backend**: Backend of the web application used by Egress Checker. The backend manages configuration (HTTP credentials, file location, approval thresholds, etc.) and communicates with the Egress service API. The backend also handles user authentication.
 - **Egress Service**: This service that provides core Egress functionality.
-
-### Dependencies
-
-- **Database**: Stores egress request metadata and approval status.
 - **Storage**: Stores files pending egress as well those that have been approved for egress.
 
 ## Static Contextual View
@@ -103,7 +92,6 @@ C4Context
     System_Boundary(tre_boundary, "Trusted Environment") {
         System(tre, "TRE", "Environment for working with sensitive data")
         System(egress, "Egress Service", "Egress functionality for TRE")
-        SystemDb(db, "Database", "Stores egress metadata and approvals")
         SystemDb(storage, "Storage", "Storage for egress files")
     }
 
@@ -122,6 +110,5 @@ C4Context
     Rel(backend, egress, "Invokes Egress service API")
 
     Rel(tre, storage, "Place egress files<br/>Read egress files")
-    Rel(egress, db, "Read/write egress metadata")
     Rel(egress, storage, "Read/write egress files")
 ```
