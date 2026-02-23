@@ -2,9 +2,11 @@
 package server
 
 import (
-	"bytes"
-	"io"
+	"crypto/sha256"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,47 +17,54 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
-// File holds the content and metadata of a stored file.
-type File struct {
-	Key          string
-	Content      []byte
-	ETag         string
-	LastModified time.Time
-}
+type fileKey string
 
-// Server is a minimal in-memory implementation of ServerInterface.
+// Server is a minimal implementation of ServerInterface.
+// It provides access to files from a local directory.
 type Server struct {
-	files map[string]File
+	// Path to the directory containing the files
+	path string
 }
 
 // New returns a Server pre-populated with the given files.
-func New(files []File) *Server {
-	m := make(map[string]File, len(files))
-	for _, f := range files {
-		m[f.Key] = f
-	}
-	return &Server{files: m}
+func New(path string) *Server {
+	return &Server{path: path}
 }
 
 // GetFiles implements GET /files.
-func (s *Server) GetFiles(c *gin.Context, params GetFilesParams) {
+func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	var matches []FileMetadata
-	for _, f := range s.files {
-		if params.Prefix != nil && !strings.HasPrefix(f.Key, *params.Prefix) {
+
+	// Glob files, computing metadata for the ones that match the prefix
+	files, err := filepath.Glob(s.path + "/*")
+	if err != nil {
+		setInternalServerError(ctx, err, "failed to glob files")
+		return
+	}
+
+	for _, f := range files {
+		relPath, err := filepath.Rel(s.path, f)
+		if err != nil {
+			setInternalServerError(ctx, err, "failed to compute relative path")
+			return
+		}
+		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
 			continue
 		}
-		matches = append(matches, FileMetadata{
-			Key:          f.Key,
-			Size:         len(f.Content),
-			LastModified: f.LastModified,
-			Etag:         f.ETag,
-		})
+
+		fileMeta, err := s.getFileMetadata(f)
+		if err != nil {
+			setInternalServerError(ctx, err, "failed to compute file metadata")
+			return
+		}
+
+		matches = append(matches, fileMeta)
 	}
 	if matches == nil {
 		matches = []FileMetadata{}
 	}
 	count := len(matches)
-	c.JSON(http.StatusOK, ListFilesResponse{
+	ctx.JSON(http.StatusOK, ListFilesResponse{
 		Files:     matches,
 		FileCount: &count,
 		Prefix:    params.Prefix,
@@ -63,23 +72,68 @@ func (s *Server) GetFiles(c *gin.Context, params GetFilesParams) {
 }
 
 // GetFilesKey implements GET /files/{key}.
-func (s *Server) GetFilesKey(c *gin.Context, key KeyParam, params GetFilesKeyParams) {
-	f, ok := s.files[key]
-	if !ok {
-		c.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
+func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyParams) {
+	path := filepath.Join(s.path, key)
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
+		return
+	} else if err != nil {
+		setInternalServerError(ctx, err, "failed to stat file")
 		return
 	}
-	if f.ETag != params.IfMatch {
-		c.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
+
+	eTag := computeETag(info)
+	if eTag != params.IfMatch {
+		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
 	}
-	c.Header("ETag", f.ETag)
-	c.Header("Last-Modified", f.LastModified.UTC().Format(time.RFC3339))
-	c.DataFromReader(
+
+	file, err := os.Open(path)
+	if err != nil {
+		setInternalServerError(ctx, err, "failed to open file")
+		return
+	}
+	defer file.Close()
+
+	ctx.Header("ETag", eTag)
+	ctx.Header("Last-Modified", info.ModTime().Format(time.RFC3339))
+	ctx.DataFromReader(
 		http.StatusOK,
-		int64(len(f.Content)),
+		info.Size(),
 		"application/octet-stream",
-		io.NopCloser(bytes.NewReader(f.Content)),
+		// FIXME: how to stream file to response??
+		// io.ReadCloser(file), ??
 		nil,
 	)
+}
+
+func (s *Server) getFileMetadata(path string) (FileMetadata, error) {
+	key, err := filepath.Rel(s.path, path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	return FileMetadata{
+		Key:          key,
+		Size:         info.Size(),
+		LastModified: info.ModTime(),
+		Etag:         computeETag(info),
+	}, nil
+}
+
+// Compute ETag as hash of file path + size + last-modified-at
+func computeETag(info os.FileInfo) string {
+	hash := sha256.New()
+	hash.Write([]byte(info.Name() + fmt.Sprintf("%d", info.Size()) + info.ModTime().String()))
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func setInternalServerError(ctx *gin.Context, err error, msg string) {
+	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: fmt.Sprintf("%s: %v", msg, err)})
 }
