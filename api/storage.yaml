@@ -70,7 +70,9 @@ paths:
                 type: string
                 default: application/octet-stream
             Last-Modified:
-              description: Timestamp when file was last modified in RFC3339
+              description: |
+                    Timestamp when file was last modified. Should be in the
+                    standard date-time format for this header
               required: true
               schema:
                 type: string
@@ -165,8 +167,10 @@ components:
         last_modified:
           type: string
           format: date-time
-          description: Timestamp when the file was last modified in RFC3339
-          example: "2026-02-18T16:04:00Z"
+          description: |
+                Timestamp when file was last modified. Should follow the
+                standard format of the Last-Modified HTTP header
+          example: "Wed, 18 Feb 2026 16:04:00 GMT"
         etag:
           type: string
           description: ETag for the file (quoted) as per RFC7232
