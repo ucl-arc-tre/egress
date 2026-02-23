@@ -29,7 +29,7 @@ type FileMetadata struct {
 	LastModified time.Time `json:"last_modified"`
 
 	// Size Size of the file in bytes
-	Size int `json:"size"`
+	Size int64 `json:"size"`
 }
 
 // ListFilesResponse defines model for ListFilesResponse.
