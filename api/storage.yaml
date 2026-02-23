@@ -25,8 +25,8 @@ paths:
     get:
       summary: List files
       description: |
-            Retrieve a list of files whose keys begin with the provided prefix,
-            or otherwise, all files if no prefix is given
+        Retrieve a list of files whose keys begin with the provided prefix,
+        or otherwise, all files if no prefix is given
       parameters:
         - $ref: '#/components/parameters/PrefixParam'
       responses:
@@ -71,8 +71,8 @@ paths:
                 default: application/octet-stream
             Last-Modified:
               description: |
-                    Timestamp when file was last modified. Should be in the
-                    standard date-time format for this header
+                Timestamp when file was last modified. Should be in the
+                standard date-time format for this header
               required: true
               schema:
                 type: string
@@ -171,8 +171,8 @@ components:
           type: string
           format: date-time
           description: |
-                Timestamp when file was last modified. Should follow the
-                standard format of the Last-Modified HTTP header
+            Timestamp when file was last modified. Should follow the
+            standard format of the Last-Modified HTTP header
           example: "Wed, 18 Feb 2026 16:04:00 GMT"
         etag:
           type: string
