@@ -25,7 +25,7 @@ paths:
     get:
       summary: List files
       description: |
-            Retrieve a list files whose keys begin the provided prefix,
+            Retrieve a list of files whose keys begin with the provided prefix,
             or otherwise, all files if no prefix is given
       parameters:
         - $ref: '#/components/parameters/PrefixParam'
