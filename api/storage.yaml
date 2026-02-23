@@ -41,7 +41,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /files/{key}:
+  /file:
     get:
       summary: Get file
       description: Get contents of the file identified by the given key
@@ -107,12 +107,15 @@ components:
 
     KeyParam:
       name: key
-      in: path
+      in: query
       required: true
-      description: Unique key identifying the file to retrieve
+      description: |
+        Unique key identifying the file to retrieve. May contain forward
+        slashes to represent path segments
       schema:
         type: string
         minLength: 1
+      example: "project-123/egress/data.csv"
 
     IfMatchETagParam:
       name: If-Match
