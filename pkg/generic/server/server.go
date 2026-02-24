@@ -24,7 +24,7 @@ type Server struct {
 	path string
 }
 
-// New returns a Server pre-populated with the given files.
+// New returns a Server that serves files from the given directory.
 func New(path string) *Server {
 	return &Server{path: path}
 }
@@ -33,31 +33,28 @@ func New(path string) *Server {
 func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	var matches []FileMetadata
 
-	// Glob files, computing metadata for the ones that match the prefix
-	files, err := filepath.Glob(s.path + "/*")
+	err := fs.WalkDir(os.DirFS(s.path), ".", func(relPath string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		matches = append(matches, fileMetadata(relPath, info))
+		return nil
+	})
 	if err != nil {
-		setInternalServerError(ctx, err, "failed to glob files")
+		setInternalServerError(ctx, err, "failed to walk directory")
 		return
 	}
 
-	for _, f := range files {
-		relPath, err := filepath.Rel(s.path, f)
-		if err != nil {
-			setInternalServerError(ctx, err, "failed to compute relative path")
-			return
-		}
-		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
-			continue
-		}
-
-		fileMeta, err := s.getFileMetadata(f)
-		if err != nil {
-			setInternalServerError(ctx, err, "failed to compute file metadata")
-			return
-		}
-
-		matches = append(matches, fileMeta)
-	}
 	if matches == nil {
 		matches = []FileMetadata{}
 	}
