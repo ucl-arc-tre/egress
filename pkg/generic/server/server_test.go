@@ -123,6 +123,13 @@ func TestGetFile(t *testing.T) {
 			expectedBody:       "hello world",
 		},
 		{
+			name:               "nested file",
+			key:                "subdir/nested",
+			ifMatch:            func(s *Handler) string { return etag(t, s, "subdir/nested") },
+			expectedStatusCode: http.StatusOK,
+			expectedBody:       "nested content",
+		},
+		{
 			name:               "not found",
 			key:                "missing.txt",
 			ifMatch:            func(s *Handler) string { return `"doesnotmatter"` },
@@ -149,13 +156,13 @@ func TestGetFile(t *testing.T) {
 		{
 			name:               "empty key",
 			key:                "",
-			ifMatch:            func(s *Handler) string { return etag(t, s, "subdir/nested") },
+			ifMatch:            func(s *Handler) string { return `"x"` },
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:               "directory key",
 			key:                "subdir",
-			ifMatch:            func(s *Handler) string { return `"x"` },
+			ifMatch:            func(s *Handler) string { return etag(t, s, "subdir/nested") },
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
