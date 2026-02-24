@@ -17,8 +17,6 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
-type fileKey string
-
 // Server is a minimal implementation of ServerInterface.
 // It provides access to files from a local directory.
 type Server struct {
