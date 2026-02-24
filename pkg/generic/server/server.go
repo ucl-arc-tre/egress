@@ -33,7 +33,7 @@ func New(path string) *Server {
 
 // GetFiles implements GET /files.
 func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
-	var matches []FileMetadata
+	matches := []FileMetadata{}
 
 	err := fs.WalkDir(os.DirFS(s.path), ".", func(relPath string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -57,9 +57,6 @@ func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		return
 	}
 
-	if matches == nil {
-		matches = []FileMetadata{}
-	}
 	count := len(matches)
 	ctx.JSON(http.StatusOK, ListFilesResponse{
 		Files:     matches,
