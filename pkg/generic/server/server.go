@@ -4,6 +4,7 @@ package server
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyP
 		return
 	}
 
-	eTag := computeETag(info)
+	eTag := computeETag(key, info)
 	if eTag != params.IfMatch {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
@@ -118,15 +119,15 @@ func (s *Server) getFileMetadata(path string) (FileMetadata, error) {
 		Key:          key,
 		Size:         info.Size(),
 		LastModified: info.ModTime(),
-		Etag:         computeETag(info),
-	}, nil
+		Etag:         computeETag(key, info),
+	}
 }
 
-// Compute ETag as hash of file path + size + last-modified-at
-func computeETag(info os.FileInfo) string {
+// computeETag returns a quoted ETag derived from the file's key, size, and mtime.
+func computeETag(key string, info fs.FileInfo) string {
 	hash := sha256.New()
-	hash.Write([]byte(info.Name() + fmt.Sprintf("%d", info.Size()) + info.ModTime().String()))
-	return fmt.Sprintf("%x", hash.Sum(nil))
+	fmt.Fprintf(hash, "%s:%d:%s", key, info.Size(), info.ModTime().String())
+	return fmt.Sprintf("%q", fmt.Sprintf("%x", hash.Sum(nil)))
 }
 
 func setInternalServerError(ctx *gin.Context, err error, msg string) {
