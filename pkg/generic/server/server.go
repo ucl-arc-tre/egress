@@ -67,9 +67,9 @@ func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	})
 }
 
-// GetFilesKey implements GET /files/{key}.
-func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyParams) {
-	path := filepath.Join(s.path, key)
+// GetFile implements GET /file.
+func (s *Server) GetFile(ctx *gin.Context, params GetFileParams) {
+	path := filepath.Join(s.path, params.Key)
 
 	// Prevent path traversal outside the server directory.
 	if !strings.HasPrefix(path, filepath.Clean(s.path)+string(filepath.Separator)) {
@@ -86,7 +86,7 @@ func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyP
 		return
 	}
 
-	eTag := computeETag(key, info)
+	eTag := computeETag(params.Key, info)
 	if eTag != params.IfMatch {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
