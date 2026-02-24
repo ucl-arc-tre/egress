@@ -69,6 +69,13 @@ func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 // GetFilesKey implements GET /files/{key}.
 func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyParams) {
 	path := filepath.Join(s.path, key)
+
+	// Prevent path traversal outside the server directory.
+	if !strings.HasPrefix(path, filepath.Clean(s.path)+string(filepath.Separator)) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
+		return
+	}
+
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
