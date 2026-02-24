@@ -63,6 +63,7 @@ paths:
               required: true
               schema:
                 type: integer
+                format: int64
                 minimum: 0
             Content-Type:
               description: Media type of file content
@@ -164,6 +165,7 @@ components:
           example: project-123/egress/data.csv
         size:
           type: integer
+          format: int64
           minimum: 0
           description: Size of the file in bytes
           example: 32400
