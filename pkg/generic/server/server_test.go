@@ -44,6 +44,7 @@ func TestGetFiles(t *testing.T) {
 	prefix := "a/"
 	traversalPrefix := "../"
 	absolutePrefix := "/etc"
+	maliciousPrefix := "a/../../../etc/"
 
 	testCases := []struct {
 		name               string
@@ -71,6 +72,11 @@ func TestGetFiles(t *testing.T) {
 		{
 			name:               "don't allow absolute path prefix",
 			prefix:             &absolutePrefix,
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "don't allow malicious path prefix",
+			prefix:             &maliciousPrefix,
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
