@@ -13,12 +13,12 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get file
+	// (GET /file)
+	GetFile(c *gin.Context, params GetFileParams)
 	// List files
 	// (GET /files)
 	GetFiles(c *gin.Context, params GetFilesParams)
-	// Get file
-	// (GET /files/{key})
-	GetFilesKey(c *gin.Context, key KeyParam, params GetFilesKeyParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -30,52 +30,30 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(c *gin.Context)
 
-// GetFiles operation middleware
-func (siw *ServerInterfaceWrapper) GetFiles(c *gin.Context) {
+// GetFile operation middleware
+func (siw *ServerInterfaceWrapper) GetFile(c *gin.Context) {
 
 	var err error
 
 	c.Set(MtlsScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetFilesParams
+	var params GetFileParams
 
-	// ------------- Optional query parameter "prefix" -------------
+	// ------------- Required query parameter "key" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "prefix", c.Request.URL.Query(), &params.Prefix)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter prefix: %w", err), http.StatusBadRequest)
+	if paramValue := c.Query("key"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetFiles(c, params)
-}
-
-// GetFilesKey operation middleware
-func (siw *ServerInterfaceWrapper) GetFilesKey(c *gin.Context) {
-
-	var err error
-
-	// ------------- Path parameter "key" -------------
-	var key KeyParam
-
-	err = runtime.BindStyledParameterWithOptions("simple", "key", c.Param("key"), &key, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindQueryParameter("form", true, true, "key", c.Request.URL.Query(), &params.Key)
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter key: %w", err), http.StatusBadRequest)
 		return
 	}
-
-	c.Set(MtlsScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetFilesKeyParams
 
 	headers := c.Request.Header
 
@@ -108,7 +86,35 @@ func (siw *ServerInterfaceWrapper) GetFilesKey(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetFilesKey(c, key, params)
+	siw.Handler.GetFile(c, params)
+}
+
+// GetFiles operation middleware
+func (siw *ServerInterfaceWrapper) GetFiles(c *gin.Context) {
+
+	var err error
+
+	c.Set(MtlsScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetFilesParams
+
+	// ------------- Optional query parameter "prefix" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "prefix", c.Request.URL.Query(), &params.Prefix)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter prefix: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetFiles(c, params)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -138,6 +144,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/file", wrapper.GetFile)
 	router.GET(options.BaseURL+"/files", wrapper.GetFiles)
-	router.GET(options.BaseURL+"/files/:key", wrapper.GetFilesKey)
 }

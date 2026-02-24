@@ -25,7 +25,8 @@ type FileMetadata struct {
 	// Key Unique filename/path of the file
 	Key string `json:"key"`
 
-	// LastModified Timestamp when the file was last modified in RFC3339
+	// LastModified Timestamp when file was last modified. Should follow the
+	// standard format of the Last-Modified HTTP header
 	LastModified time.Time `json:"last_modified"`
 
 	// Size Size of the file in bytes
@@ -66,16 +67,20 @@ type NotFound = ErrorResponse
 // PreconditionFailed defines model for PreconditionFailed.
 type PreconditionFailed = ErrorResponse
 
-// GetFilesParams defines parameters for GetFiles.
-type GetFilesParams struct {
-	// Prefix List files whose key begins with this value
-	Prefix *PrefixParam `form:"prefix,omitempty" json:"prefix,omitempty"`
-}
+// GetFileParams defines parameters for GetFile.
+type GetFileParams struct {
+	// Key Unique key identifying the file to retrieve. May contain forward
+	// slashes to represent path segments
+	Key KeyParam `form:"key" json:"key"`
 
-// GetFilesKeyParams defines parameters for GetFilesKey.
-type GetFilesKeyParams struct {
 	// IfMatch Expected ETag for the file (quoted) as per RFC7232. Return the
 	// file only if its ETag matches the one specified in this header;
 	// otherwise, return a 412 Precondition Failed error
 	IfMatch IfMatchETagParam `json:"If-Match"`
+}
+
+// GetFilesParams defines parameters for GetFiles.
+type GetFilesParams struct {
+	// Prefix List files whose key begins with this value
+	Prefix *PrefixParam `form:"prefix,omitempty" json:"prefix,omitempty"`
 }
