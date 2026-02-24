@@ -36,8 +36,8 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	matches := []FileMetadata{}
 
 	// Prefix should be a relative path local to the server's root
-	if params.Prefix != nil && !filepath.IsLocal(*params.Prefix) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid prefix. Prefix should be a relative path."})
+	if params.Prefix != nil && !prefixIsValid(*params.Prefix) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid prefix"})
 		return
 	}
 
@@ -80,15 +80,11 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 // GetFile implements GET /file.
 func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
-	if params.Key == "" {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "key must not be empty"})
+	if !keyIsValid(params.Key) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
 		return
 	}
-	if !filepath.IsLocal(params.Key) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key. Key should be a relative path."})
-		return
-	}
-	if !isValidETag(params.IfMatch) {
+	if !eTagIsValid(params.IfMatch) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: `invalid If-Match header. ETag must be a quoted string, e.g. "abc123"`})
 		return
 	}
@@ -125,8 +121,16 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
-// isValidETag reports whether s is a quoted ETag string as per RFC 7232.
-func isValidETag(s string) bool {
+func prefixIsValid(prefix string) bool {
+	return prefix != "" && filepath.IsLocal(prefix)
+}
+
+func keyIsValid(key string) bool {
+	return key != "" && filepath.IsLocal(key) && !strings.HasSuffix(key, "/")
+}
+
+// eTagIsValid reports whether s is a quoted ETag string as per RFC 7232.
+func eTagIsValid(s string) bool {
 	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }
 
