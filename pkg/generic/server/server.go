@@ -35,7 +35,20 @@ func New(path string) *Handler {
 func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	matches := []FileMetadata{}
 
-	err := fs.WalkDir(os.DirFS(h.path), ".", func(relPath string, d fs.DirEntry, err error) error {
+	// Prefix should be a relative path local to the server's root
+	if params.Prefix != nil && !filepath.IsLocal(*params.Prefix) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid prefix. Prefix should be a relative path."})
+		return
+	}
+
+	root, err := os.OpenRoot(h.path)
+	if err != nil {
+		setInternalServerError(ctx, err, "failed to open server root")
+		return
+	}
+	defer root.Close()
+
+	err = fs.WalkDir(root.FS(), ".", func(relPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -67,19 +80,25 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 // GetFile implements GET /file.
 func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
-	path := filepath.Join(h.path, params.Key)
-
-	// Prevent path traversal outside the server directory.
-	if !strings.HasPrefix(path, h.path+string(filepath.Separator)) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
+	// Validate key param
+	if !filepath.IsLocal(params.Key) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key. Key should be a relative path."})
 		return
 	}
 
-	info, err := os.Stat(path)
+	// Prevent path traversal by opening in root
+	file, err := os.OpenInRoot(h.path, params.Key)
 	if os.IsNotExist(err) {
 		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
 		return
 	} else if err != nil {
+		setInternalServerError(ctx, err, "failed to open file")
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
 		setInternalServerError(ctx, err, "failed to stat file")
 		return
 	}
@@ -89,13 +108,6 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
 	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		setInternalServerError(ctx, err, "failed to open file")
-		return
-	}
-	defer file.Close()
 
 	ctx.Header("ETag", eTag)
 	ctx.Header("Last-Modified", info.ModTime().UTC().Format(time.RFC3339))

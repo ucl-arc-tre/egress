@@ -42,6 +42,8 @@ func TestGetFiles(t *testing.T) {
 		"b/baz.txt": "other",
 	}
 	prefix := "a/"
+	traversalPrefix := "../"
+	absolutePrefix := "/etc"
 
 	testCases := []struct {
 		name               string
@@ -60,6 +62,16 @@ func TestGetFiles(t *testing.T) {
 			prefix:             &prefix,
 			expectedStatusCode: http.StatusOK,
 			expectedCount:      2,
+		},
+		{
+			name:               "don't allow path traversal prefix",
+			prefix:             &traversalPrefix,
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "don't allow absolute path prefix",
+			prefix:             &absolutePrefix,
+			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
 
@@ -80,10 +92,12 @@ func TestGetFiles(t *testing.T) {
 			router.ServeHTTP(writer, req)
 
 			assert.Equal(t, tc.expectedStatusCode, writer.Code)
-			var resp ListFilesResponse
-			require.NoError(t, json.NewDecoder(writer.Body).Decode(&resp))
-			assert.Len(t, resp.Files, tc.expectedCount)
-			assert.Equal(t, tc.expectedCount, *resp.FileCount)
+			if writer.Code == http.StatusOK {
+				var resp ListFilesResponse
+				require.NoError(t, json.NewDecoder(writer.Body).Decode(&resp))
+				assert.Len(t, resp.Files, tc.expectedCount)
+				assert.Equal(t, tc.expectedCount, *resp.FileCount)
+			}
 		})
 	}
 }
@@ -122,6 +136,12 @@ func TestGetFile(t *testing.T) {
 		{
 			name:               "path traversal",
 			key:                "../secret.txt",
+			ifMatch:            func(s *Handler) string { return `"x"` },
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "absolute path",
+			key:                "/etc/passwd",
 			ifMatch:            func(s *Handler) string { return `"x"` },
 			expectedStatusCode: http.StatusBadRequest,
 		},
