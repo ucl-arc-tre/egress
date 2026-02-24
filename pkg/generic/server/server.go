@@ -28,7 +28,7 @@ type Handler struct {
 
 // New returns a Server that serves files from the given directory.
 func New(path string) *Handler {
-	return &Handler{path: path}
+	return &Handler{path: filepath.Clean(path)}
 }
 
 // GetFiles implements GET /files.
@@ -70,7 +70,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	path := filepath.Join(h.path, params.Key)
 
 	// Prevent path traversal outside the server directory.
-	if !strings.HasPrefix(path, filepath.Clean(h.path)+string(filepath.Separator)) {
+	if !strings.HasPrefix(path, h.path+string(filepath.Separator)) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
 		return
 	}
