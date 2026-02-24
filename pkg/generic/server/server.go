@@ -19,7 +19,7 @@ import (
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
 // Server is a minimal implementation of ServerInterface.
-// It provides access to files from a local directory.
+// It serves files from a local directory.
 type Server struct {
 	// Path to the directory containing the files
 	path string
@@ -104,17 +104,7 @@ func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyP
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
-func (s *Server) getFileMetadata(path string) (FileMetadata, error) {
-	key, err := filepath.Rel(s.path, path)
-	if err != nil {
-		return FileMetadata{}, err
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		return FileMetadata{}, err
-	}
-
+func fileMetadata(key string, info fs.FileInfo) FileMetadata {
 	return FileMetadata{
 		Key:          key,
 		Size:         info.Size(),
