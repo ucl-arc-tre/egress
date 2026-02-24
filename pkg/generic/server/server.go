@@ -19,23 +19,23 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
-// Server is a minimal implementation of ServerInterface.
+// Handler is a minimal implementation of ServerInterface.
 // It serves files from a local directory.
-type Server struct {
+type Handler struct {
 	// Path to the directory containing the files
 	path string
 }
 
 // New returns a Server that serves files from the given directory.
-func New(path string) *Server {
-	return &Server{path: path}
+func New(path string) *Handler {
+	return &Handler{path: path}
 }
 
 // GetFiles implements GET /files.
-func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
+func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	matches := []FileMetadata{}
 
-	err := fs.WalkDir(os.DirFS(s.path), ".", func(relPath string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(os.DirFS(h.path), ".", func(relPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -66,11 +66,11 @@ func (s *Server) GetFiles(ctx *gin.Context, params GetFilesParams) {
 }
 
 // GetFile implements GET /file.
-func (s *Server) GetFile(ctx *gin.Context, params GetFileParams) {
-	path := filepath.Join(s.path, params.Key)
+func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
+	path := filepath.Join(h.path, params.Key)
 
 	// Prevent path traversal outside the server directory.
-	if !strings.HasPrefix(path, filepath.Clean(s.path)+string(filepath.Separator)) {
+	if !strings.HasPrefix(path, filepath.Clean(h.path)+string(filepath.Separator)) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
 		return
 	}

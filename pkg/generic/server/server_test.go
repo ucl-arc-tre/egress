@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newTestServer creates a temporary directory, writes the given files into it,
-// and returns a Server rooted at that directory.
-func newTestServer(t *testing.T, files map[string]string) *Server {
+// newTestHandler creates a temporary directory, writes the given files into it,
+// and returns a Handler rooted at that directory.
+func newTestHandler(t *testing.T, files map[string]string) *Handler {
 	t.Helper()
 	dir := t.TempDir()
 	for key, content := range files {
@@ -28,7 +28,7 @@ func newTestServer(t *testing.T, files map[string]string) *Server {
 }
 
 // etag returns the ETag for a file in the server's directory.
-func etag(t *testing.T, s *Server, key string) string {
+func etag(t *testing.T, s *Handler, key string) string {
 	t.Helper()
 	info, err := os.Stat(filepath.Join(s.path, key))
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestGetFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestServer(t, files)
+			h := newTestHandler(t, files)
 
 			url := "/files"
 			if tc.prefix != nil {
@@ -74,7 +74,7 @@ func TestGetFiles(t *testing.T) {
 
 			writer := httptest.NewRecorder()
 			_, router := gin.CreateTestContext(writer)
-			RegisterHandlers(router, s)
+			RegisterHandlers(router, h)
 
 			req, _ := http.NewRequest(http.MethodGet, url, nil)
 			router.ServeHTTP(writer, req)
@@ -96,47 +96,47 @@ func TestGetFile(t *testing.T) {
 	testCases := []struct {
 		name               string
 		key                string
-		ifMatch            func(s *Server) string
+		ifMatch            func(s *Handler) string
 		expectedStatusCode int
 		expectedBody       string
 	}{
 		{
 			name:               "ok",
 			key:                "data.txt",
-			ifMatch:            func(s *Server) string { return etag(t, s, "data.txt") },
+			ifMatch:            func(s *Handler) string { return etag(t, s, "data.txt") },
 			expectedStatusCode: http.StatusOK,
 			expectedBody:       "hello world",
 		},
 		{
 			name:               "not found",
 			key:                "missing.txt",
-			ifMatch:            func(s *Server) string { return `"doesnotmatter"` },
+			ifMatch:            func(s *Handler) string { return `"doesnotmatter"` },
 			expectedStatusCode: http.StatusNotFound,
 		},
 		{
 			name:               "etag mismatch",
 			key:                "data.txt",
-			ifMatch:            func(s *Server) string { return `"wrongetag"` },
+			ifMatch:            func(s *Handler) string { return `"wrongetag"` },
 			expectedStatusCode: http.StatusPreconditionFailed,
 		},
 		{
 			name:               "path traversal",
 			key:                "../secret.txt",
-			ifMatch:            func(s *Server) string { return `"x"` },
+			ifMatch:            func(s *Handler) string { return `"x"` },
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestServer(t, files)
+			h := newTestHandler(t, files)
 
 			writer := httptest.NewRecorder()
 			_, router := gin.CreateTestContext(writer)
-			RegisterHandlers(router, s)
+			RegisterHandlers(router, h)
 
 			req, _ := http.NewRequest(http.MethodGet, "/file?key="+tc.key, nil)
-			req.Header.Set("If-Match", tc.ifMatch(s))
+			req.Header.Set("If-Match", tc.ifMatch(h))
 			router.ServeHTTP(writer, req)
 
 			assert.Equal(t, tc.expectedStatusCode, writer.Code)
