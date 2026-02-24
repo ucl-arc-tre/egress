@@ -19,7 +19,7 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
-// Handler is a minimal implementation of ServerInterface.
+// Handler is a minimal implementation of the storage OAPI spec.
 // It serves files from a local directory.
 type Handler struct {
 	// Path to the directory containing the files
@@ -139,7 +139,6 @@ func fileMetadata(key string, info fs.FileInfo) FileMetadata {
 	}
 }
 
-// computeETag returns a quoted ETag derived from the file's key, size, and mtime.
 func computeETag(key string, info fs.FileInfo) string {
 	hash := sha256.New()
 	fmt.Fprintf(hash, "%s:%d:%s", key, info.Size(), info.ModTime().String())

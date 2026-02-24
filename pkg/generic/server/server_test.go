@@ -27,12 +27,11 @@ func newTestHandler(t *testing.T, files map[string]string) *Handler {
 	return New(dir)
 }
 
-// etag returns the ETag for a file in the server's directory.
-func etag(t *testing.T, s *Handler, key string) string {
+func etag(t *testing.T, s *Handler, fileKey string) string {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(s.path, key))
+	info, err := os.Stat(filepath.Join(s.path, fileKey))
 	require.NoError(t, err)
-	return computeETag(key, info)
+	return computeETag(fileKey, info)
 }
 
 func TestGetFiles(t *testing.T) {
