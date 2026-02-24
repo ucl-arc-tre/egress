@@ -31,6 +31,7 @@ codegen:  ## Run code generation
 
 test-unit:  ## Run unit tests
 	go test ./internal/...
+	go test ./pkg/...
 
 test-e2e: dev-k3d dev-rustfs dev-rqlite ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
