@@ -80,9 +80,16 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 // GetFile implements GET /file.
 func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
-	// Validate key param
+	if params.Key == "" {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "key must not be empty"})
+		return
+	}
 	if !filepath.IsLocal(params.Key) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key. Key should be a relative path."})
+		return
+	}
+	if !isValidETag(params.IfMatch) {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: `invalid If-Match header. ETag must be a quoted string, e.g. "abc123"`})
 		return
 	}
 
@@ -102,6 +109,10 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		setInternalServerError(ctx, err, "failed to stat file")
 		return
 	}
+	if info.IsDir() {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "key must refer to a file, not a directory"})
+		return
+	}
 
 	eTag := computeETag(params.Key, info)
 	if eTag != params.IfMatch {
@@ -112,6 +123,11 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.Header("ETag", eTag)
 	ctx.Header("Last-Modified", info.ModTime().UTC().Format(time.RFC3339))
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
+}
+
+// isValidETag reports whether s is a quoted ETag string as per RFC 7232.
+func isValidETag(s string) bool {
+	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }
 
 func fileMetadata(key string, info fs.FileInfo) FileMetadata {

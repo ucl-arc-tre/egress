@@ -37,9 +37,10 @@ func etag(t *testing.T, s *Handler, key string) string {
 
 func TestGetFiles(t *testing.T) {
 	files := map[string]string{
-		"a/foo.txt": "hello",
-		"a/bar.txt": "world",
-		"b/baz.txt": "other",
+		"a/foo.txt":      "hello",
+		"a/bar.txt":      "world",
+		"a/b/nested.txt": "nested content",
+		"b/baz.txt":      "other",
 	}
 	prefix := "a/"
 	traversalPrefix := "../"
@@ -55,13 +56,13 @@ func TestGetFiles(t *testing.T) {
 			name:               "no prefix returns all files",
 			prefix:             nil,
 			expectedStatusCode: http.StatusOK,
-			expectedCount:      3,
+			expectedCount:      4,
 		},
 		{
-			name:               "prefix filters files",
+			name:               "prefix filters files, including nested",
 			prefix:             &prefix,
 			expectedStatusCode: http.StatusOK,
-			expectedCount:      2,
+			expectedCount:      3,
 		},
 		{
 			name:               "don't allow path traversal prefix",
@@ -104,7 +105,8 @@ func TestGetFiles(t *testing.T) {
 
 func TestGetFile(t *testing.T) {
 	files := map[string]string{
-		"data.txt": "hello world",
+		"data.txt":      "hello world",
+		"subdir/nested": "nested content",
 	}
 
 	testCases := []struct {
@@ -143,6 +145,24 @@ func TestGetFile(t *testing.T) {
 			name:               "absolute path",
 			key:                "/etc/passwd",
 			ifMatch:            func(s *Handler) string { return `"x"` },
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "empty key",
+			key:                "",
+			ifMatch:            func(s *Handler) string { return etag(t, s, "subdir/nested") },
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "directory key",
+			key:                "subdir",
+			ifMatch:            func(s *Handler) string { return `"x"` },
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "unquoted If-Match",
+			key:                "data.txt",
+			ifMatch:            func(s *Handler) string { return "unquoted" },
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
