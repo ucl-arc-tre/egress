@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 //go:generate go tool oapi-codegen -generate gin -package server -o server.gen.go ../../../api/storage.yaml
@@ -121,5 +122,6 @@ func computeETag(key string, info fs.FileInfo) string {
 }
 
 func setInternalServerError(ctx *gin.Context, err error, msg string) {
-	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: fmt.Sprintf("%s: %v", msg, err)})
+	log.Error().Err(err).Msg(msg)
+	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: msg})
 }
