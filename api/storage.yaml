@@ -32,6 +32,13 @@ paths:
       responses:
         '200':
           description: List of files matching the given prefix
+          headers:
+            Content-Type:
+              description: Media type of response content
+              schema:
+                type: string
+                enum:
+                  - application/json
           content:
             application/json:
               schema:
