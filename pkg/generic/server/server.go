@@ -99,15 +99,8 @@ func (s *Server) GetFilesKey(ctx *gin.Context, key KeyParam, params GetFilesKeyP
 	defer file.Close()
 
 	ctx.Header("ETag", eTag)
-	ctx.Header("Last-Modified", info.ModTime().Format(time.RFC3339))
-	ctx.DataFromReader(
-		http.StatusOK,
-		info.Size(),
-		"application/octet-stream",
-		// FIXME: how to stream file to response??
-		// io.ReadCloser(file), ??
-		nil,
-	)
+	ctx.Header("Last-Modified", info.ModTime().UTC().Format(time.RFC3339))
+	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
 func (s *Server) getFileMetadata(path string) (FileMetadata, error) {
