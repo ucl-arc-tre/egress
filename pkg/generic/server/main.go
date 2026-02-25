@@ -175,7 +175,7 @@ func makeETag(key string, info fs.FileInfo) (string, error) {
 	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {
 		return "", err
 	}
-	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().Unix()); err != nil {
+	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().UnixNano()); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf(`"%x"`, hash.Sum(nil)), nil
