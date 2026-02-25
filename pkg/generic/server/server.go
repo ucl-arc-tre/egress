@@ -129,7 +129,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	}
 
 	ctx.Header("ETag", eTag)
-	ctx.Header("Last-Modified", info.ModTime().UTC().Format(time.RFC3339))
+	ctx.Header("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
