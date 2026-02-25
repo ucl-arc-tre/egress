@@ -4,6 +4,7 @@ package server
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -29,7 +30,7 @@ type Handler struct {
 	path string
 }
 
-// New returns a Server that serves files from the given directory.
+// New returns a Handler that serves files from the given directory.
 func New(path string) *Handler {
 	return &Handler{path: filepath.Clean(path)}
 }
@@ -46,7 +47,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 	root, err := os.OpenRoot(h.path)
 	if err != nil {
-		setInternalServerError(ctx, err, "failed to open server root")
+		internalServerError(ctx, err, "failed to open server root")
 		return
 	}
 	defer root.Close()
@@ -73,7 +74,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		return nil
 	})
 	if err != nil {
-		setInternalServerError(ctx, err, "failed to walk directory")
+		internalServerError(ctx, err, "failed to walk directory")
 		return
 	}
 
@@ -98,18 +99,18 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 
 	// Prevent path traversal by opening in root
 	file, err := os.OpenInRoot(h.path, params.Key)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
 		return
 	} else if err != nil {
-		setInternalServerError(ctx, err, "failed to open file")
+		internalServerError(ctx, err, "failed to open file")
 		return
 	}
 	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		setInternalServerError(ctx, err, "failed to stat file")
+		internalServerError(ctx, err, "failed to stat file")
 		return
 	}
 	if info.IsDir() {
@@ -119,7 +120,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 
 	eTag, err := computeETag(params.Key, info)
 	if err != nil {
-		setInternalServerError(ctx, err, "failed to compute ETag")
+		internalServerError(ctx, err, "failed to compute ETag")
 		return
 	}
 	if eTag != params.IfMatch {
@@ -167,10 +168,10 @@ func computeETag(key string, info fs.FileInfo) (string, error) {
 	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().Unix()); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%q", fmt.Sprintf("%x", hash.Sum(nil))), nil
+	return fmt.Sprintf(`"%x"`, hash.Sum(nil)), nil
 }
 
-func setInternalServerError(ctx *gin.Context, err error, msg string) {
+func internalServerError(ctx *gin.Context, err error, msg string) {
 	log.Error().Err(err).Msg(msg)
 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: msg})
 }
