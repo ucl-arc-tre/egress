@@ -124,6 +124,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	}
 	if info.IsDir() {
 		badRequest(ctx, "key must refer to a file, not a directory")
+		return
 	}
 
 	eTag, err := makeETag(params.Key, info)
