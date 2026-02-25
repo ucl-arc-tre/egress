@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,9 @@ func etag(t *testing.T, s *Handler, fileKey string) string {
 	t.Helper()
 	info, err := os.Stat(filepath.Join(s.path, fileKey))
 	require.NoError(t, err)
-	return computeETag(fileKey, info)
+	etag, err := computeETag(fileKey, info)
+	require.NoError(t, err)
+	return etag
 }
 
 func TestGetFiles(t *testing.T) {
@@ -169,6 +172,12 @@ func TestGetFile(t *testing.T) {
 			name:               "directory key",
 			key:                "subdir",
 			ifMatch:            func(s *Handler) string { return etag(t, s, "subdir/nested") },
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "key too long",
+			key:                strings.Repeat("a", maxKeyLen+1),
+			ifMatch:            func(s *Handler) string { return `"x"` },
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{

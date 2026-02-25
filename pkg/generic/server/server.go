@@ -3,6 +3,7 @@ package server
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -64,7 +65,11 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		if err != nil {
 			return err
 		}
-		matches = append(matches, fileMetadata(relPath, info))
+		meta, err := fileMetadata(relPath, info)
+		if err != nil {
+			return err
+		}
+		matches = append(matches, meta)
 		return nil
 	})
 	if err != nil {
@@ -112,7 +117,11 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	eTag := computeETag(params.Key, info)
+	eTag, err := computeETag(params.Key, info)
+	if err != nil {
+		setInternalServerError(ctx, err, "failed to compute ETag")
+		return
+	}
 	if eTag != params.IfMatch {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
@@ -136,19 +145,29 @@ func eTagIsValid(s string) bool {
 	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }
 
-func fileMetadata(key string, info fs.FileInfo) FileMetadata {
+func fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
+	etag, err := computeETag(key, info)
+	if err != nil {
+		return FileMetadata{}, err
+	}
 	return FileMetadata{
 		Key:          key,
 		Size:         info.Size(),
 		LastModified: info.ModTime(),
-		Etag:         computeETag(key, info),
-	}
+		Etag:         etag,
+	}, nil
 }
 
-func computeETag(key string, info fs.FileInfo) string {
+func computeETag(key string, info fs.FileInfo) (string, error) {
 	hash := sha256.New()
-	fmt.Fprintf(hash, "%s:%d:%s", key, info.Size(), info.ModTime().String())
-	return fmt.Sprintf("%q", fmt.Sprintf("%x", hash.Sum(nil)))
+	hash.Write([]byte(key))
+	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {
+		return "", err
+	}
+	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().Unix()); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%q", fmt.Sprintf("%x", hash.Sum(nil))), nil
 }
 
 func setInternalServerError(ctx *gin.Context, err error, msg string) {
