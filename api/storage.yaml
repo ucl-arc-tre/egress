@@ -1,0 +1,225 @@
+openapi: "3.1.0"
+
+info:
+  version: 0.1.0
+  title: ucl-arc-tre-egress-generic-storage
+  description: |
+    A minimal API for a generic file storage service, providing List and Get
+    operations over an arbitrary storage backend. The API design is motivated
+    by the S3 API, but caters to the requirements of the Egress service.
+
+    Authentication: Mutual TLS (mTLS). This requires both the client and server
+    to present valid X.509 certificates signed by a trusted CA. Validation of
+    certificates are done at the transport layer. Therefore, the application
+    layer will never receive an unauthenticated request, eliminating the need
+    for 401 Unauthorized response.
+
+servers:
+  - url: /v0
+
+security:
+  - mtls: []
+
+paths:
+  /files:
+    get:
+      summary: List files
+      description: |
+        Retrieve a list of files whose keys begin with the provided prefix,
+        or otherwise, all files if no prefix is given
+      parameters:
+        - $ref: '#/components/parameters/PrefixParam'
+      responses:
+        '200':
+          description: List of files matching the given prefix
+          headers:
+            Content-Type:
+              description: Media type of response content
+              schema:
+                type: string
+                enum:
+                  - application/json
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListFilesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /file:
+    get:
+      summary: Get file
+      description: Get contents of the file identified by the given key
+      parameters:
+        - $ref: '#/components/parameters/KeyParam'
+        - $ref: '#/components/parameters/IfMatchETagParam'
+      responses:
+        '200':
+          description: Contents of requested file
+          headers:
+            ETag:
+              description: ETag for the file (quoted) as per RFC7232
+              required: true
+              schema:
+                type: string
+              example: '"d4a8...e2f6"'
+            Content-Length:
+              description: Size of the file (i.e. response body) in bytes
+              required: true
+              schema:
+                type: integer
+                format: int64
+                minimum: 0
+            Content-Type:
+              description: Media type of file content
+              schema:
+                type: string
+                default: application/octet-stream
+            Last-Modified:
+              description: |
+                Timestamp when file was last modified. Should be in the
+                standard date-time format for this header
+              required: true
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+
+  parameters:
+    PrefixParam:
+      name: prefix
+      in: query
+      required: false
+      description: List files whose key begins with this value
+      schema:
+        type: string
+      example: "project-123/egress"
+
+    KeyParam:
+      name: key
+      in: query
+      required: true
+      description: |
+        Unique key identifying the file to retrieve. May contain forward
+        slashes to represent path segments
+      schema:
+        type: string
+        minLength: 1
+      example: "project-123/egress/data.csv"
+
+    IfMatchETagParam:
+      name: If-Match
+      in: header
+      required: true
+      description: |
+        Expected ETag for the file (quoted) as per RFC7232. Return the
+        file only if its ETag matches the one specified in this header;
+        otherwise, return a 412 Precondition Failed error
+      schema:
+        type: string
+      example: '"d4a8...e2f6"'
+
+  schemas:
+    ListFilesResponse:
+      type: object
+      required:
+        - files
+      properties:
+        files:
+          type: array
+          description: List of files resulting from the request
+          items:
+            $ref: '#/components/schemas/FileMetadata'
+        file_count:
+          type: integer
+          minimum: 0
+          description: Number of files in the list
+        prefix:
+          type: string
+          description: |
+            Value of the 'prefix' param provided with the request;
+            omitted when prefix is not provided
+
+    FileMetadata:
+      type: object
+      required:
+        - key
+        - size
+        - last_modified
+        - etag
+      properties:
+        key:
+          type: string
+          description: Unique filename/path of the file
+          example: project-123/egress/data.csv
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Size of the file in bytes
+          example: 32400
+        last_modified:
+          type: string
+          format: date-time
+          description: |
+            Timestamp when file was last modified. Should follow the
+            standard format of the Last-Modified HTTP header
+          example: "Wed, 18 Feb 2026 16:04:00 GMT"
+        etag:
+          type: string
+          description: ETag for the file (quoted) as per RFC7232
+          example: '"d4a8...e2f6"'
+
+    ErrorResponse:
+      type: object
+      required:
+         - message
+      properties:
+        message:
+          type: string
+          description: Descriptive error message
+          example: "Invalid parameter 'keys'"
+
+  responses:
+    BadRequest:
+      description: Bad request; invalid arguments
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Requested file does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PreconditionFailed:
+      description: Precondition failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Unexpected internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
