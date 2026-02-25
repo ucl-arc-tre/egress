@@ -142,6 +142,7 @@ components:
       type: object
       required:
         - files
+        - file_count
       properties:
         files:
           type: array
@@ -151,7 +152,8 @@ components:
         file_count:
           type: integer
           minimum: 0
-          description: Number of files in the list
+          maximum: 1000
+          description: Number of files in the list. Limited to 1000 to avoid DoS.
         prefix:
           type: string
           description: |
