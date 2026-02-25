@@ -40,7 +40,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 	// Prefix should be a relative rootDirPath local to the server's root
 	if params.Prefix != nil && !isValidPrefix(*params.Prefix) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid prefix"})
+		badRequest(ctx, "invalid prefix")
 		return
 	}
 
@@ -88,13 +88,13 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 // GetFile implements GET /file.
 func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	if !isValidKey(params.Key) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
+		badRequest(ctx, "invalid key")
 		return
 	}
 
 	requestedETag := params.IfMatch
 	if !isValidETag(requestedETag) {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: `invalid If-Match header. ETag must be a quoted string, e.g. "abc123"`})
+		badRequest(ctx, `invalid If-Match header. ETag must be a quoted string, e.g. "abc123"`)
 		return
 	}
 
@@ -115,8 +115,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 	if info.IsDir() {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "key must refer to a file, not a directory"})
-		return
+		badRequest(ctx, "key must refer to a file, not a directory")
 	}
 
 	eTag, err := makeETag(params.Key, info)
@@ -177,4 +176,8 @@ func makeETag(key string, info fs.FileInfo) (string, error) {
 func internalServerError(ctx *gin.Context, err error, msg string) {
 	log.Error().Err(err).Msg(msg)
 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: msg})
+}
+
+func badRequest(ctx *gin.Context, msg string) {
+	ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: msg})
 }
