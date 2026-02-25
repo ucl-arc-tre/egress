@@ -30,7 +30,7 @@ func newTestHandler(t *testing.T, files map[string]string) *Handler {
 
 func etag(t *testing.T, s *Handler, fileKey string) string {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(s.path, fileKey))
+	info, err := os.Stat(filepath.Join(s.rootDirPath, fileKey))
 	require.NoError(t, err)
 	etag, err := makeETag(fileKey, info)
 	require.NoError(t, err)

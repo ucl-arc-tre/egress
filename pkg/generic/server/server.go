@@ -26,25 +26,25 @@ const maxKeyLen = 1024 // bytes, same limit that S3 uses
 // It serves files from a local directory.
 type Handler struct {
 	// Path to the directory containing the files
-	path string
+	rootDirPath string
 }
 
 // New returns a Handler that serves files from the given directory.
-func New(path string) *Handler {
-	return &Handler{path: filepath.Clean(path)}
+func New(rootDirPath string) *Handler {
+	return &Handler{rootDirPath: filepath.Clean(rootDirPath)}
 }
 
 // GetFiles implements GET /files.
 func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	matches := []FileMetadata{}
 
-	// Prefix should be a relative path local to the server's root
+	// Prefix should be a relative rootDirPath local to the server's root
 	if params.Prefix != nil && !isValidPrefix(*params.Prefix) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid prefix"})
 		return
 	}
 
-	root, err := os.OpenRoot(h.path)
+	root, err := os.OpenRoot(h.rootDirPath)
 	if err != nil {
 		internalServerError(ctx, err, "failed to open server root")
 		return
@@ -96,8 +96,8 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	// Prevent path traversal by opening in root
-	file, err := os.OpenInRoot(h.path, params.Key)
+	// Prevent rootDirPath traversal by opening in root
+	file, err := os.OpenInRoot(h.rootDirPath, params.Key)
 	if errors.Is(err, fs.ErrNotExist) {
 		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "file not found"})
 		return
