@@ -80,7 +80,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	count := len(matches)
 	ctx.JSON(http.StatusOK, ListFilesResponse{
 		Files:     matches,
-		FileCount: &count,
+		FileCount: count,
 		Prefix:    params.Prefix,
 	})
 }

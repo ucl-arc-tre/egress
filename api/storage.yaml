@@ -142,6 +142,7 @@ components:
       type: object
       required:
         - files
+        - file_count
       properties:
         files:
           type: array

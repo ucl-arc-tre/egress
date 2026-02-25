@@ -105,7 +105,7 @@ func TestGetFiles(t *testing.T) {
 				var resp ListFilesResponse
 				require.NoError(t, json.NewDecoder(writer.Body).Decode(&resp))
 				assert.Len(t, resp.Files, tc.expectedCount)
-				assert.Equal(t, tc.expectedCount, *resp.FileCount)
+				assert.Equal(t, tc.expectedCount, resp.FileCount)
 			}
 		})
 	}
