@@ -32,7 +32,7 @@ func etag(t *testing.T, s *Handler, fileKey string) string {
 	t.Helper()
 	info, err := os.Stat(filepath.Join(s.path, fileKey))
 	require.NoError(t, err)
-	etag, err := computeETag(fileKey, info)
+	etag, err := makeETag(fileKey, info)
 	require.NoError(t, err)
 	return etag
 }
