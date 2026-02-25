@@ -19,6 +19,8 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
+const maxKeyLen = 1024 // bytes, same limit that S3 uses
+
 // Handler is a minimal implementation of the storage OAPI spec.
 // It serves files from a local directory.
 type Handler struct {
@@ -126,7 +128,7 @@ func prefixIsValid(prefix string) bool {
 }
 
 func keyIsValid(key string) bool {
-	return key != "" && filepath.IsLocal(key) && !strings.HasSuffix(key, "/")
+	return key != "" && len(key) <= maxKeyLen && filepath.IsLocal(key) && !strings.HasSuffix(key, "/")
 }
 
 // eTagIsValid reports whether s is a quoted ETag string as per RFC 7232.
