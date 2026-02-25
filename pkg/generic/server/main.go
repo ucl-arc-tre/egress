@@ -91,7 +91,9 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid key"})
 		return
 	}
-	if !isValidETag(params.IfMatch) {
+
+	requestedETag := params.IfMatch
+	if !isValidETag(requestedETag) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: `invalid If-Match header. ETag must be a quoted string, e.g. "abc123"`})
 		return
 	}
@@ -122,7 +124,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
 	}
-	if eTag != params.IfMatch {
+	if eTag != requestedETag {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
 	}
