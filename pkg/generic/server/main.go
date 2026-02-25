@@ -20,7 +20,10 @@ import (
 //go:generate go tool oapi-codegen -generate spec -package server -o spec.gen.go ../../../api/storage.yaml
 //go:generate go tool oapi-codegen -generate types -package server -o types.gen.go ../../../api/storage.yaml
 
-const maxKeyLen = 1024 // bytes, same limit that S3 uses
+const (
+	maxKeyLen    = 1024 // bytes, same limit that S3 uses
+	maxFileCount = 1000 // limit number of files returned. Should match maximum in ../../../api/storage.yaml
+)
 
 // Handler is a minimal implementation of the storage OAPI spec.
 // It serves files from a local directory.
@@ -51,6 +54,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	}
 	defer root.Close()
 
+	count := 0
 	err = fs.WalkDir(root.FS(), ".", func(relPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -70,6 +74,11 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 			return err
 		}
 		matches = append(matches, meta)
+		count += 1
+		if count > maxFileCount {
+			log.Info().Msg("Maximum file count reached, truncating output.")
+			return nil
+		}
 		return nil
 	})
 	if err != nil {
@@ -77,7 +86,6 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		return
 	}
 
-	count := len(matches)
 	ctx.JSON(http.StatusOK, ListFilesResponse{
 		Files:     matches,
 		FileCount: count,

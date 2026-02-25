@@ -35,7 +35,7 @@ type FileMetadata struct {
 
 // ListFilesResponse defines model for ListFilesResponse.
 type ListFilesResponse struct {
-	// FileCount Number of files in the list
+	// FileCount Number of files in the list. Limited to 1000 to avoid DoS.
 	FileCount int `json:"file_count"`
 
 	// Files List of files resulting from the request
