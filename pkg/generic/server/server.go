@@ -134,7 +134,9 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 }
 
 func prefixIsValid(prefix string) bool {
-	return prefix != "" && filepath.IsLocal(prefix)
+	// Treat an empty prefix as valid (equivalent to "no prefix" per API spec),
+	// while still enforcing locality for any non-empty prefix.
+	return prefix == "" || filepath.IsLocal(prefix)
 }
 
 func keyIsValid(key string) bool {
