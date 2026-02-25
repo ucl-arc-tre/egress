@@ -54,7 +54,6 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	}
 	defer root.Close()
 
-	count := 0
 	err = fs.WalkDir(root.FS(), ".", func(relPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -74,10 +73,9 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 			return err
 		}
 		matches = append(matches, meta)
-		count += 1
-		if count > maxFileCount {
+		if len(matches) > maxFileCount {
 			log.Info().Msg("Maximum file count reached, truncating output.")
-			return nil
+			return fs.SkipAll
 		}
 		return nil
 	})
@@ -88,7 +86,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 
 	ctx.JSON(http.StatusOK, ListFilesResponse{
 		Files:     matches,
-		FileCount: count,
+		FileCount: len(matches),
 		Prefix:    params.Prefix,
 	})
 }
