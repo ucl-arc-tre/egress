@@ -27,7 +27,7 @@ func Provider(cfg config.DBConfigBundle) (Interface, error) {
 		}
 		return db, nil
 	}
-	// An unsupported provider shoudld have been failed by Helm
+	// An unsupported provider should have been failed by Helm
 	// So, this is fallback
 	return nil, fmt.Errorf("unsupported database provider %s", cfg.Provider)
 }
