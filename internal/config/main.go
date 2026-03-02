@@ -10,6 +10,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 const (
@@ -55,7 +56,7 @@ func StorageConfig() StorageConfigBundle {
 	provider := k.String("storage.provider")
 	cfg := StorageConfigBundle{Provider: provider}
 
-	if provider == "s3" {
+	if provider == string(types.StorageBackendKindS3) {
 		cfg.S3 = S3StorageConfig{
 			Region:          k.String("storage.s3.region"),
 			AccessKeyId:     k.String("storage.s3.access_key_id"),
@@ -69,7 +70,7 @@ func DBConfig() DBConfigBundle {
 	provider := k.String("db.provider")
 	cfg := DBConfigBundle{Provider: provider}
 
-	if provider == "rqlite" {
+	if provider == string(types.DBProviderRqlite) {
 		cfg.Rqlite = RqliteConfig{
 			BaseURL:  k.String("db.rqlite.baseUrl"),
 			Username: k.String("db.rqlite.username"),

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func TestServerAddressSetPort(t *testing.T) {
@@ -40,7 +41,7 @@ storage:
 	InitWithPath(cf)
 
 	storage := StorageConfig()
-	assert.Equal(t, "s3", storage.Provider)
+	assert.Equal(t, string(types.StorageBackendKindS3), storage.Provider)
 	assert.Equal(t, "us-east-1", storage.S3.Region)
 	assert.Equal(t, "s3-access-key-123", storage.S3.AccessKeyId)
 	assert.Equal(t, "s3-secret-key-123", storage.S3.SecretAccessKey)
@@ -56,7 +57,7 @@ storage:
 	InitWithPath(cf)
 
 	storage := StorageConfig()
-	assert.Equal(t, "generic", storage.Provider)
+	assert.Equal(t, string(types.StorageBackendKindGeneric), storage.Provider)
 }
 
 func TestDBConfig(t *testing.T) {
@@ -72,7 +73,7 @@ db:
 	InitWithPath(cf)
 
 	db := DBConfig()
-	assert.Equal(t, "rqlite", db.Provider)
+	assert.Equal(t, string(types.DBProviderRqlite), db.Provider)
 	assert.Equal(t, "http://rqlite.local", db.Rqlite.BaseURL)
 	assert.Equal(t, "dbusername123", db.Rqlite.Username)
 	assert.Equal(t, "dbpassword123", db.Rqlite.Password)

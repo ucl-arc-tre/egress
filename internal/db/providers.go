@@ -6,21 +6,15 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/db/inmemory"
 	"github.com/ucl-arc-tre/egress/internal/db/rqlite"
-)
-
-type DBProvider string
-
-const (
-	DBProviderInMemory = DBProvider("inmemory")
-	DBProviderRqlite   = DBProvider("rqlite")
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func Provider(cfg config.DBConfigBundle) (Interface, error) {
-	switch DBProvider(cfg.Provider) {
-	case DBProviderInMemory:
+	switch types.DBProvider(cfg.Provider) {
+	case types.DBProviderInMemory:
 		return inmemory.New(), nil
 
-	case DBProviderRqlite:
+	case types.DBProviderRqlite:
 		db, err := rqlite.New(cfg.Rqlite.BaseURL, cfg.Rqlite.Username, cfg.Rqlite.Password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialise rqlite: %w", err)

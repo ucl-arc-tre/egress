@@ -6,11 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/db/inmemory"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func TestInMemoryProvider(t *testing.T) {
 	cfg := config.DBConfigBundle{
-		Provider: string(DBProviderInMemory),
+		Provider: string(types.DBProviderInMemory),
 	}
 	db, err := Provider(cfg)
 	assert.NoError(t, err)
