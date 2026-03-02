@@ -27,7 +27,7 @@ func New() *Handler {
 	if err := db.Migrate(); err != nil {
 		panic(err)
 	}
-	storage, err := storage.Provider(types.StorageBackendKindS3)
+	storage, err := storage.Provider(config.StorageConfig())
 	if err != nil {
 		panic(err)
 	}

@@ -1,6 +1,11 @@
 package config
 
-type S3CredentialBundle struct {
+type StorageConfigBundle struct {
+	Provider string
+	S3       S3StorageConfig
+}
+
+type S3StorageConfig struct {
 	Region          string
 	AccessKeyId     string
 	SecretAccessKey string

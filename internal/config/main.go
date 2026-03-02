@@ -25,11 +25,11 @@ var k *koanf.Koanf
 
 // Initialise config
 func Init() {
-	initWithPath(configPath)
+	InitWithPath(configPath)
 }
 
 // Initialise config from given path
-func initWithPath(path string) {
+func InitWithPath(path string) {
 	k = koanf.New(".")
 	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
 		log.Err(err).Msg("error loading config")
@@ -51,12 +51,18 @@ func IsDebug() bool {
 	return k.Bool("debug")
 }
 
-func S3Credentials() S3CredentialBundle {
-	return S3CredentialBundle{
-		Region:          k.String("s3.region"),
-		AccessKeyId:     k.String("s3.access_key_id"),
-		SecretAccessKey: k.String("s3.secret_access_key"),
+func StorageConfig() StorageConfigBundle {
+	provider := k.String("storage.provider")
+	cfg := StorageConfigBundle{Provider: provider}
+
+	if provider == "s3" {
+		cfg.S3 = S3StorageConfig{
+			Region:          k.String("storage.s3.region"),
+			AccessKeyId:     k.String("storage.s3.access_key_id"),
+			SecretAccessKey: k.String("storage.s3.secret_access_key"),
+		}
 	}
+	return cfg
 }
 
 func DBConfig() DBConfigBundle {

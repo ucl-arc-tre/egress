@@ -24,10 +24,12 @@ dev:
 
 debug: true
 
-s3:
-  region: us-east-1
-  access_key_id: rustfsadmin
-  secret_access_key: rustfsadmin # pragma: allowlist secret
+storage:
+  provider: s3
+  s3:
+    region: us-east-1
+    access_key_id: rustfsadmin
+    secret_access_key: rustfsadmin # pragma: allowlist secret
 
 db:
   provider: rqlite
