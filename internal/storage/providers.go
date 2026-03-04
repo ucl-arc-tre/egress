@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ucl-arc-tre/egress/internal/config"
+	"github.com/ucl-arc-tre/egress/internal/storage/generic"
 	"github.com/ucl-arc-tre/egress/internal/storage/s3"
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
@@ -18,7 +19,7 @@ func Provider(cfg config.StorageConfigBundle) (Interface, error) {
 		return storage, nil
 
 	case types.StorageBackendKindGeneric:
-		return nil, fmt.Errorf("generic storage backend not yet implemented")
+		return generic.New(), nil
 	}
 	// An unsupported backend should have been failed by Helm
 	// So, this is fallback
