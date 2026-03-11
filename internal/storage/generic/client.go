@@ -50,7 +50,7 @@ func locationToServerURL(location types.LocationURI) (string, error) {
 	if u.Scheme != "https" && u.Scheme != "http" {
 		return "", fmt.Errorf("unsupported scheme %q (must be http or https)", u.Scheme)
 	}
-	// Strip trailing any slash to avoid double slashes in appended paths
+	// Strip any trailing slash to avoid double slashes in appended paths
 	u.Path = strings.TrimRight(u.Path, "/")
 	return u.String(), nil
 }
