@@ -13,36 +13,36 @@ import (
 )
 
 // Returns a pre-configured mock client for testing
-type mockAPIClientGetter struct {
-	mock ClientWithResponsesInterface
+type MockAPIClientGetter struct {
+	Mock ClientWithResponsesInterface
 }
 
-func (g *mockAPIClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
-	return g.mock, nil
+func (g *MockAPIClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
+	return g.Mock, nil
 }
 
-func newWithMock(mockClient ClientWithResponsesInterface) *Storage {
+func NewWithMock(mockClient ClientWithResponsesInterface) *Storage {
 	return &Storage{
-		getter: &mockAPIClientGetter{
-			mock: mockClient,
+		getter: &MockAPIClientGetter{
+			Mock: mockClient,
 		},
 	}
 }
 
-type mockFile struct {
+type MockFile struct {
 	Key            string
 	ETag           string
 	LastModifiedAt time.Time
 	Content        string
 }
 
-type mockClient struct {
-	Files        []mockFile
+type MockClient struct {
+	Files        []MockFile
 	ForceListErr error
 	ForceGetErr  error
 }
 
-func (c *mockClient) GetFilesWithResponse(
+func (c *MockClient) GetFilesWithResponse(
 	_ context.Context,
 	params *GetFilesParams,
 	_ ...RequestEditorFn,
@@ -73,7 +73,7 @@ func (c *mockClient) GetFilesWithResponse(
 	}, nil
 }
 
-func (c *mockClient) GetFileWithResponse(
+func (c *MockClient) GetFileWithResponse(
 	_ context.Context,
 	params *GetFileParams,
 	_ ...RequestEditorFn,

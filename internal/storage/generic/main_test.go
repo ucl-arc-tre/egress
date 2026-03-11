@@ -15,13 +15,13 @@ import (
 )
 
 var (
-	file1 = mockFile{
+	file1 = MockFile{
 		Key:            "project-1/data.csv",
 		ETag:           `"abc123"`,
 		LastModifiedAt: time.Date(2026, 3, 4, 16, 4, 0, 0, time.UTC),
 		Content:        "id,result\n1,4.16\n",
 	}
-	file2 = mockFile{
+	file2 = MockFile{
 		Key:            "project-1/report.txt",
 		ETag:           `"def456"`,
 		LastModifiedAt: time.Date(2026, 3, 4, 8, 22, 0, 0, time.UTC),
@@ -37,8 +37,8 @@ func TestMain(t *testing.T) {
 }
 
 func TestListReturnsAllFiles(t *testing.T) {
-	ms := newWithMock(&mockClient{
-		Files: []mockFile{file1, file2},
+	ms := NewWithMock(&MockClient{
+		Files: []MockFile{file1, file2},
 	})
 	files, err := ms.List(context.Background(), location)
 
@@ -56,8 +56,8 @@ func TestListReturnsAllFiles(t *testing.T) {
 }
 
 func TestListEmptyLocation(t *testing.T) {
-	ms := newWithMock(&mockClient{
-		Files: []mockFile{},
+	ms := NewWithMock(&MockClient{
+		Files: []MockFile{},
 	})
 	files, err := ms.List(context.Background(), location)
 
@@ -66,9 +66,9 @@ func TestListEmptyLocation(t *testing.T) {
 }
 
 func TestListETagQuotesAreStripped(t *testing.T) {
-	f := mockFile{Key: "a.data", ETag: `"ab12"`, Content: "hello"}
-	ms := newWithMock(&mockClient{
-		Files: []mockFile{f},
+	f := MockFile{Key: "a.data", ETag: `"ab12"`, Content: "hello"}
+	ms := NewWithMock(&MockClient{
+		Files: []MockFile{f},
 	})
 	files, err := ms.List(context.Background(), location)
 
@@ -78,7 +78,7 @@ func TestListETagQuotesAreStripped(t *testing.T) {
 }
 
 func TestListPropagatesClientError(t *testing.T) {
-	ms := newWithMock(&mockClient{
+	ms := NewWithMock(&MockClient{
 		ForceListErr: errors.New("network error"),
 	})
 	_, err := ms.List(context.Background(), location)
@@ -88,8 +88,8 @@ func TestListPropagatesClientError(t *testing.T) {
 }
 
 func TestGetFileContentByFileId(t *testing.T) {
-	ms := newWithMock(&mockClient{
-		Files: []mockFile{file1, file2},
+	ms := NewWithMock(&MockClient{
+		Files: []MockFile{file1, file2},
 	})
 	f, err := ms.Get(context.Background(), location, types.FileId("abc123"))
 
@@ -104,8 +104,8 @@ func TestGetFileContentByFileId(t *testing.T) {
 }
 
 func TestGetFileIdNotFound(t *testing.T) {
-	ms := newWithMock(&mockClient{
-		Files: []mockFile{file1},
+	ms := NewWithMock(&MockClient{
+		Files: []MockFile{file1},
 	})
 	_, err := ms.Get(context.Background(), location, types.FileId("nonexistent"))
 
@@ -114,7 +114,7 @@ func TestGetFileIdNotFound(t *testing.T) {
 }
 
 func TestGetPropagatesClientListError(t *testing.T) {
-	ms := newWithMock(&mockClient{
+	ms := NewWithMock(&MockClient{
 		ForceListErr: errors.New("network error"),
 	})
 	_, err := ms.Get(context.Background(), location, types.FileId("abc123"))
@@ -124,8 +124,8 @@ func TestGetPropagatesClientListError(t *testing.T) {
 }
 
 func TestGetPropagatesClientError(t *testing.T) {
-	ms := newWithMock(&mockClient{
-		Files:       []mockFile{file1},
+	ms := NewWithMock(&MockClient{
+		Files:       []MockFile{file1},
 		ForceGetErr: errors.New("network error"),
 	})
 	_, err := ms.Get(context.Background(), location, types.FileId("abc123"))
