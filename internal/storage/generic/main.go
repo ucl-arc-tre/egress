@@ -41,10 +41,10 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 	switch resp.StatusCode() {
 	case http.StatusOK: // Handled after switch
 	case http.StatusBadRequest:
-		m := responseMessageOrDefault("bad request", resp.JSON400)
+		m := extractResponseMessageOrDefault(resp.JSON400, "bad request")
 		return nil, types.NewErrInvalidObjectF("%s: %s", errmsg, m)
 	default:
-		m := responseMessageOrDefault("unexpected error", resp.JSON500)
+		m := extractResponseMessageOrDefault(resp.JSON500, "unexpected error")
 		return nil, types.NewErrServerF("%s: %s (status %d)", errmsg, m, resp.StatusCode())
 	}
 
@@ -84,15 +84,15 @@ func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId ty
 	switch resp.StatusCode() {
 	case http.StatusOK: // Handled after switch
 	case http.StatusNotFound:
-		m := responseMessageOrDefault("file not found", resp.JSON404)
+		m := extractResponseMessageOrDefault(resp.JSON404, "file not found")
 		return nil, types.NewErrNotFoundF("%s: %s", errmsg, m)
 	case http.StatusBadRequest:
-		m := responseMessageOrDefault("bad request", resp.JSON400)
+		m := extractResponseMessageOrDefault(resp.JSON400, "bad request")
 		return nil, types.NewErrInvalidObjectF("%s: %s", errmsg, m)
 	case http.StatusPreconditionFailed:
 		return nil, types.NewErrNotFoundF("%s: ETag mismatch for fileId [%v]", errmsg, fileId)
 	default:
-		m := responseMessageOrDefault("unexpected error", resp.JSON500)
+		m := extractResponseMessageOrDefault(resp.JSON500, "unexpected error")
 		return nil, types.NewErrServerF("%s: %s (status %d)", errmsg, m, resp.StatusCode())
 	}
 
@@ -118,7 +118,7 @@ func (s *Storage) keyForFileId(ctx context.Context, client ClientWithResponsesIn
 	return "", types.NewErrNotFoundF("[generic] no file with fileId [%v]", fileId)
 }
 
-func responseMessageOrDefault(fallback string, body *ErrorResponse) string {
+func extractResponseMessageOrDefault(body *ErrorResponse, fallback string) string {
 	if body != nil {
 		return body.Message
 	}
