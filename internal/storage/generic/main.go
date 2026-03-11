@@ -41,16 +41,10 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 	switch resp.StatusCode() {
 	case http.StatusOK: // Handled after switch
 	case http.StatusBadRequest:
-		m := "bad request"
-		if resp.JSON400 != nil {
-			m = resp.JSON400.Message
-		}
+		m := responseMessageOrDefault("bad request", resp.JSON400)
 		return nil, types.NewErrInvalidObjectF("%s: %s", errmsg, m)
 	default:
-		m := "unexpected error"
-		if resp.JSON500 != nil {
-			m = resp.JSON500.Message
-		}
+		m := responseMessageOrDefault("unexpected error", resp.JSON500)
 		return nil, types.NewErrServerF("%s: %s (status %d)", errmsg, m, resp.StatusCode())
 	}
 
@@ -90,24 +84,15 @@ func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId ty
 	switch resp.StatusCode() {
 	case http.StatusOK: // Handled after switch
 	case http.StatusNotFound:
-		m := "file not found"
-		if resp.JSON404 != nil {
-			m = resp.JSON404.Message
-		}
+		m := responseMessageOrDefault("file not found", resp.JSON404)
 		return nil, types.NewErrNotFoundF("%s: %s", errmsg, m)
 	case http.StatusBadRequest:
-		m := "bad request"
-		if resp.JSON400 != nil {
-			m = resp.JSON400.Message
-		}
+		m := responseMessageOrDefault("bad request", resp.JSON400)
 		return nil, types.NewErrInvalidObjectF("%s: %s", errmsg, m)
 	case http.StatusPreconditionFailed:
 		return nil, types.NewErrNotFoundF("%s: ETag mismatch for fileId [%v]", errmsg, fileId)
 	default:
-		m := "unexpected error"
-		if resp.JSON500 != nil {
-			m = resp.JSON500.Message
-		}
+		m := responseMessageOrDefault("unexpected error", resp.JSON500)
 		return nil, types.NewErrServerF("%s: %s (status %d)", errmsg, m, resp.StatusCode())
 	}
 
@@ -131,6 +116,13 @@ func (s *Storage) keyForFileId(ctx context.Context, client ClientWithResponsesIn
 		}
 	}
 	return "", types.NewErrNotFoundF("[generic] no file with fileId [%v]", fileId)
+}
+
+func responseMessageOrDefault(fallback string, body *ErrorResponse) string {
+	if body != nil {
+		return body.Message
+	}
+	return fallback
 }
 
 func stripQuotes(s string) string {
