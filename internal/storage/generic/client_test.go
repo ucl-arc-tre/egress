@@ -10,43 +10,56 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
-func TestLocationToServerURLValidHTTPS(t *testing.T) {
-	u, _ := url.Parse("https://data.local/v0")
+func TestLocationToServerURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		expected  string
+		expectErr bool
+	}{
+		{
+			name:      "Valid HTTPS",
+			input:     "https://data.local/v0",
+			expected:  "https://data.local/v0",
+			expectErr: false,
+		},
+		{
+			name:      "Valid HTTP",
+			input:     "http://data.local/v0",
+			expected:  "http://data.local/v0",
+			expectErr: false,
+		},
+		{
+			name:      "Trailing slash stripped",
+			input:     "http://localhost/v0/",
+			expected:  "http://localhost/v0",
+			expectErr: false,
+		},
+		{
+			name:      "Missing host",
+			input:     "https:///v0",
+			expected:  "",
+			expectErr: true,
+		},
+		{
+			name:      "Unsupported scheme",
+			input:     "s3://egress",
+			expected:  "",
+			expectErr: true,
+		},
+	}
 
-	result, err := locationToServerURL(types.LocationURI(*u))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			u, _ := url.Parse(tc.input)
 
-	require.NoError(t, err)
-	assert.Equal(t, "https://data.local/v0", result.String())
-}
-
-func TestLocationToServerURLValidHTTP(t *testing.T) {
-	u, _ := url.Parse("http://data.local/v0")
-
-	result, err := locationToServerURL(types.LocationURI(*u))
-
-	require.NoError(t, err)
-	assert.Equal(t, "http://data.local/v0", result.String())
-}
-
-func TestLocationToServerURLTrailingSlashStripped(t *testing.T) {
-	u, _ := url.Parse("http://localhost/v0/")
-
-	result, err := locationToServerURL(types.LocationURI(*u))
-
-	require.NoError(t, err)
-	assert.Equal(t, "http://localhost/v0", result.String())
-}
-
-func TestLocationToServerURLMissingHost(t *testing.T) {
-	u, _ := url.Parse("https:///v0")
-
-	_, err := locationToServerURL(types.LocationURI(*u))
-	assert.Error(t, err)
-}
-
-func TestLocationToServerURLUnsupportedScheme(t *testing.T) {
-	u, _ := url.Parse("s3://egress")
-
-	_, err := locationToServerURL(types.LocationURI(*u))
-	assert.Error(t, err)
+			result, err := locationToServerURL(types.LocationURI(*u))
+			if tc.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, result.String())
+		})
+	}
 }
