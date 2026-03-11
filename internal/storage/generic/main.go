@@ -12,15 +12,15 @@ import (
 )
 
 type Storage struct {
-	client clientGetter
+	getter apiClientGetter
 }
 
 // Uses a single reusable http.Client for all requests
 // mTLS auth is handled at the transport layer
 func New() *Storage {
 	return &Storage{
-		client: &httpClientGetter{
-			httpClient: &http.Client{
+		getter: &httpAPIClientGetter{
+			http: &http.Client{
 				Transport: http.DefaultTransport,
 			},
 		},
@@ -28,7 +28,7 @@ func New() *Storage {
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.FileMetadata, error) {
-	client, err := s.client.Get(location)
+	client, err := s.getter.Get(location)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 }
 
 func (s *Storage) Get(ctx context.Context, location types.LocationURI, fileId types.FileId) (*types.File, error) {
-	client, err := s.client.Get(location)
+	client, err := s.getter.Get(location)
 	if err != nil {
 		return nil, err
 	}

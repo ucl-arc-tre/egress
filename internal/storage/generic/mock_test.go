@@ -13,17 +13,17 @@ import (
 )
 
 // Returns a pre-configured mock client for testing
-type mockClientGetter struct {
+type mockAPIClientGetter struct {
 	mock ClientWithResponsesInterface
 }
 
-func (g *mockClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
+func (g *mockAPIClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
 	return g.mock, nil
 }
 
 func newWithMock(mockClient ClientWithResponsesInterface) *Storage {
 	return &Storage{
-		client: &mockClientGetter{
+		getter: &mockAPIClientGetter{
 			mock: mockClient,
 		},
 	}

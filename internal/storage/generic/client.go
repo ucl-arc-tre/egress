@@ -11,35 +11,35 @@ import (
 
 //go:generate go tool oapi-codegen -generate types,client -package generic -o client.gen.go ../../../api/storage.yaml
 
-// Gets a client for the given location
-// Used primarily for mocking the client
-type clientGetter interface {
+// Gets a storage API client for the given location
+// Facilitates mocking the client
+type apiClientGetter interface {
 	Get(location types.LocationURI) (ClientWithResponsesInterface, error)
 }
 
-type httpClientGetter struct {
-	httpClient *http.Client
+type httpAPIClientGetter struct {
+	http *http.Client
 }
 
-func (g *httpClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
-	return newClient(location, g.httpClient)
+func (g *httpAPIClientGetter) Get(location types.LocationURI) (ClientWithResponsesInterface, error) {
+	return newAPIClient(location, g.http)
 }
 
-// Creates a generic storage client using the generated OpenAPI
+// Creates a storage API client using the generated
 // code and the provided http.Client
-func newClient(location types.LocationURI, httpClient *http.Client) (*ClientWithResponses, error) {
+func newAPIClient(location types.LocationURI, http *http.Client) (*ClientWithResponses, error) {
 	serverURL, err := locationToServerURL(location)
 	if err != nil {
 		return nil, types.NewErrServerF("[generic] invalid storage location: %w", err)
 	}
-	client, err := NewClientWithResponses(
+	apiClient, err := NewClientWithResponses(
 		serverURL.String(),
-		WithHTTPClient(httpClient),
+		WithHTTPClient(http),
 	)
 	if err != nil {
-		return nil, types.NewErrServerF("[generic] failed to create client: %w", err)
+		return nil, types.NewErrServerF("[generic] failed to create API client: %w", err)
 	}
-	return client, nil
+	return apiClient, nil
 }
 
 func locationToServerURL(location types.LocationURI) (url.URL, error) {
