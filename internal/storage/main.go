@@ -12,7 +12,7 @@ func ParseLocation(raw string) (*types.LocationURI, error) {
 		return nil, err
 	}
 	uri := types.LocationURI(*parsed)
-	if uri.Path != "" && uri.StorageBackendKind() == types.StorageBackendKindS3 {
+	if uri.Path != "" && uri.StorageProvider() == types.StorageProviderS3 {
 		return nil, types.NewErrInvalidObjectF("s3 location [%s] cannot have path", raw)
 	}
 	return &uri, nil

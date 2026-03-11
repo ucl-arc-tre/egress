@@ -10,15 +10,15 @@ import (
 )
 
 func Provider(cfg config.StorageConfigBundle) (Interface, error) {
-	switch types.StorageBackendKind(cfg.Provider) {
-	case types.StorageBackendKindS3:
+	switch types.StorageProvider(cfg.Provider) {
+	case types.StorageProviderS3:
 		storage, err := s3.New(cfg.S3)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialise s3 provider: %w", err)
 		}
 		return storage, nil
 
-	case types.StorageBackendKindGeneric:
+	case types.StorageProviderGeneric:
 		return generic.New(), nil
 	}
 	// An unsupported backend should have been failed by Helm

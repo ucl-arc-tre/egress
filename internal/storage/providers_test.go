@@ -13,7 +13,7 @@ import (
 )
 
 // Need to initialise config for this test
-func TestS3StorageKind(t *testing.T) {
+func TestS3StorageProvider(t *testing.T) {
 	yaml := `
 storage:
   provider: s3
@@ -30,7 +30,7 @@ dev:
 	config.InitWithPath(cf)
 
 	cfg := config.StorageConfigBundle{
-		Provider: string(types.StorageBackendKindS3),
+		Provider: string(types.StorageProviderS3),
 	}
 	storage, err := Provider(cfg)
 	assert.NoError(t, err)

@@ -41,7 +41,7 @@ storage:
 	InitWithPath(cf)
 
 	storage := StorageConfig()
-	assert.Equal(t, string(types.StorageBackendKindS3), storage.Provider)
+	assert.Equal(t, string(types.StorageProviderS3), storage.Provider)
 	assert.Equal(t, "us-east-1", storage.S3.Region)
 	assert.Equal(t, "s3-access-key-123", storage.S3.AccessKeyId)
 	assert.Equal(t, "s3-secret-key-123", storage.S3.SecretAccessKey)
@@ -57,7 +57,7 @@ storage:
 	InitWithPath(cf)
 
 	storage := StorageConfig()
-	assert.Equal(t, string(types.StorageBackendKindGeneric), storage.Provider)
+	assert.Equal(t, string(types.StorageProviderGeneric), storage.Provider)
 }
 
 func TestDBConfig(t *testing.T) {

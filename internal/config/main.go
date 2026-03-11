@@ -56,7 +56,7 @@ func StorageConfig() StorageConfigBundle {
 	provider := k.String("storage.provider")
 	cfg := StorageConfigBundle{Provider: provider}
 
-	if provider == string(types.StorageBackendKindS3) {
+	if provider == string(types.StorageProviderS3) {
 		cfg.S3 = S3StorageConfig{
 			Region:          k.String("storage.s3.region"),
 			AccessKeyId:     k.String("storage.s3.access_key_id"),
