@@ -33,7 +33,7 @@ func newClient(location types.LocationURI, httpClient *http.Client) (*ClientWith
 		return nil, types.NewErrServerF("[generic] invalid storage location: %w", err)
 	}
 	client, err := NewClientWithResponses(
-		serverURL,
+		serverURL.String(),
 		WithHTTPClient(httpClient),
 	)
 	if err != nil {
@@ -42,15 +42,15 @@ func newClient(location types.LocationURI, httpClient *http.Client) (*ClientWith
 	return client, nil
 }
 
-func locationToServerURL(location types.LocationURI) (string, error) {
+func locationToServerURL(location types.LocationURI) (url.URL, error) {
 	u := url.URL(location)
 	if u.Host == "" {
-		return "", fmt.Errorf("does not contain a host")
+		return url.URL{}, fmt.Errorf("does not contain a host")
 	}
 	if u.Scheme != "https" && u.Scheme != "http" {
-		return "", fmt.Errorf("unsupported scheme %q (must be http or https)", u.Scheme)
+		return url.URL{}, fmt.Errorf("unsupported scheme %q (must be http or https)", u.Scheme)
 	}
 	// Strip any trailing slash to avoid double slashes in appended paths
 	u.Path = strings.TrimRight(u.Path, "/")
-	return u.String(), nil
+	return u, nil
 }

@@ -16,7 +16,7 @@ func TestLocationToServerURLValidHTTPS(t *testing.T) {
 	result, err := locationToServerURL(types.LocationURI(*u))
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://data.local/v0", result)
+	assert.Equal(t, "https://data.local/v0", result.String())
 }
 
 func TestLocationToServerURLValidHTTP(t *testing.T) {
@@ -25,7 +25,7 @@ func TestLocationToServerURLValidHTTP(t *testing.T) {
 	result, err := locationToServerURL(types.LocationURI(*u))
 
 	require.NoError(t, err)
-	assert.Equal(t, "http://data.local/v0", result)
+	assert.Equal(t, "http://data.local/v0", result.String())
 }
 
 func TestLocationToServerURLTrailingSlashStripped(t *testing.T) {
@@ -34,7 +34,7 @@ func TestLocationToServerURLTrailingSlashStripped(t *testing.T) {
 	result, err := locationToServerURL(types.LocationURI(*u))
 
 	require.NoError(t, err)
-	assert.Equal(t, "http://localhost/v0", result)
+	assert.Equal(t, "http://localhost/v0", result.String())
 }
 
 func TestLocationToServerURLMissingHost(t *testing.T) {
