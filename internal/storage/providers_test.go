@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ucl-arc-tre/egress/internal/config"
+	"github.com/ucl-arc-tre/egress/internal/storage/generic"
 	"github.com/ucl-arc-tre/egress/internal/storage/s3"
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
@@ -35,6 +36,24 @@ dev:
 	storage, err := Provider(cfg)
 	assert.NoError(t, err)
 	assert.IsType(t, &s3.Storage{}, storage)
+}
+
+// Need to initialise config for this test
+func TestGenericStorageProvider(t *testing.T) {
+	yaml := `
+storage:
+  provider: generic
+  generic: {}
+`
+	cf := makeConfig(t, "generic.yaml", yaml)
+	config.InitWithPath(cf)
+
+	cfg := config.StorageConfigBundle{
+		Provider: string(types.StorageProviderGeneric),
+	}
+	storage, err := Provider(cfg)
+	assert.NoError(t, err)
+	assert.IsType(t, &generic.Storage{}, storage)
 }
 
 func TestUnsupportedProvider(t *testing.T) {
