@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -11,23 +12,22 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/config"
 )
 
-func newClient() *awsS3.Client {
-	credentials := config.S3Credentials()
+func newClient(s3Config config.S3StorageConfig) (*awsS3.Client, error) {
 	cfg, err := awsConfig.LoadDefaultConfig(
 		context.Background(),
 		awsConfig.WithCredentialsProvider(awsCredentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
-				AccessKeyID:     credentials.AccessKeyId,
-				SecretAccessKey: credentials.SecretAccessKey,
+				AccessKeyID:     s3Config.AccessKeyId,
+				SecretAccessKey: s3Config.SecretAccessKey,
 			},
 		}),
-		awsConfig.WithRegion(credentials.Region),
+		awsConfig.WithRegion(s3Config.Region),
 	)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("error configuring S3 client: %w", err)
 	}
 	if config.IsDevS3() {
-		return newDevClientWithBucket(cfg)
+		return newDevClientWithBucket(cfg), nil
 	}
-	return awsS3.NewFromConfig(cfg)
+	return awsS3.NewFromConfig(cfg), nil
 }

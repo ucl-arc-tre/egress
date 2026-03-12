@@ -6,21 +6,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStorageBackendKindFromLocation(t *testing.T) {
+func TestStorageProviderFromLocation(t *testing.T) {
 	tests := []struct {
 		scheme   string
-		expected StorageBackendKind
+		expected StorageProvider
 	}{
-		{scheme: "s3", expected: StorageBackendKindS3},
-		{scheme: "http", expected: StorageBackendKindGeneric},
-		{scheme: "https", expected: StorageBackendKindGeneric},
-		{scheme: "blah", expected: StorageBackendKindUnknown},
+		{scheme: "s3", expected: StorageProviderS3},
+		{scheme: "http", expected: StorageProviderGeneric},
+		{scheme: "https", expected: StorageProviderGeneric},
+		{scheme: "blah", expected: StorageProviderUnknown},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.scheme, func(t *testing.T) {
 			location := LocationURI{Scheme: tc.scheme}
-			assert.Equal(t, tc.expected, location.StorageBackendKind())
+			assert.Equal(t, tc.expected, location.StorageProvider())
 		})
 	}
 }

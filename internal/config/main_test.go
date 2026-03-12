@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func TestServerAddressSetPort(t *testing.T) {
@@ -22,25 +23,41 @@ func TestDebugTrue(t *testing.T) {
 	yaml := `debug: true`
 
 	cf := makeConfig(t, "debug.yaml", yaml)
-	initWithPath(cf)
+	InitWithPath(cf)
 
 	assert.True(t, IsDebug())
 }
 
-func TestS3Credentials(t *testing.T) {
+func TestStorageConfigS3(t *testing.T) {
 	yaml := `
-s3:
-  region: "eu-west-1"
-  access_key_id: "access-key-123"
-  secret_access_key: "secret-key-123"
+storage:
+  provider: s3
+  s3:
+    region: "us-east-1"
+    access_key_id: "s3-access-key-123"
+    secret_access_key: "s3-secret-key-123"
 `
-	cf := makeConfig(t, "s3.yaml", yaml)
-	initWithPath(cf)
+	cf := makeConfig(t, "storage-s3.yaml", yaml)
+	InitWithPath(cf)
 
-	s3 := S3Credentials()
-	assert.Equal(t, "eu-west-1", s3.Region)
-	assert.Equal(t, "access-key-123", s3.AccessKeyId)
-	assert.Equal(t, "secret-key-123", s3.SecretAccessKey)
+	storage := StorageConfig()
+	assert.Equal(t, string(types.StorageProviderS3), storage.Provider)
+	assert.Equal(t, "us-east-1", storage.S3.Region)
+	assert.Equal(t, "s3-access-key-123", storage.S3.AccessKeyId)
+	assert.Equal(t, "s3-secret-key-123", storage.S3.SecretAccessKey)
+}
+
+func TestStorageConfigGeneric(t *testing.T) {
+	yaml := `
+storage:
+  provider: generic
+  generic: {}
+`
+	cf := makeConfig(t, "storage-generic.yaml", yaml)
+	InitWithPath(cf)
+
+	storage := StorageConfig()
+	assert.Equal(t, string(types.StorageProviderGeneric), storage.Provider)
 }
 
 func TestDBConfig(t *testing.T) {
@@ -53,10 +70,10 @@ db:
     password: "dbpassword123"
 `
 	cf := makeConfig(t, "db.yaml", yaml)
-	initWithPath(cf)
+	InitWithPath(cf)
 
 	db := DBConfig()
-	assert.Equal(t, "rqlite", db.Provider)
+	assert.Equal(t, string(types.DBProviderRqlite), db.Provider)
 	assert.Equal(t, "http://rqlite.local", db.Rqlite.BaseURL)
 	assert.Equal(t, "dbusername123", db.Rqlite.Username)
 	assert.Equal(t, "dbpassword123", db.Rqlite.Password)
@@ -70,7 +87,7 @@ auth:
     password: "password123"
 `
 	cf := makeConfig(t, "basic-auth.yaml", yaml)
-	initWithPath(cf)
+	InitWithPath(cf)
 
 	auth := AuthBasicCredentials()
 	assert.Equal(t, "username123", auth.Username)

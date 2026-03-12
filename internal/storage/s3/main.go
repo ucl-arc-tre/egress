@@ -9,6 +9,7 @@ import (
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/rs/zerolog/log"
 
+	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
@@ -16,8 +17,12 @@ type Storage struct {
 	client ClientInterface
 }
 
-func New() *Storage {
-	return &Storage{client: newClient()}
+func New(s3Config config.S3StorageConfig) (*Storage, error) {
+	s3, err := newClient(s3Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create S3 client: %w", err)
+	}
+	return &Storage{client: s3}, nil
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.FileMetadata, error) {

@@ -31,11 +31,15 @@ dev:
 # Should debug logs be enabled
 debug: false
 
-# S3 configuration
-s3:
-  region: null
-  access_key_id: null
-  secret_access_key: null
+# Storage configuration
+storage:
+  # One of: s3, generic
+  provider: null
+  s3:
+    region: null
+    access_key_id: null
+    secret_access_key: null
+  generic: {}
 
 # DB configuration
 db:
@@ -45,6 +49,7 @@ db:
     baseUrl: null
     username: null
     password: null
+  inmemory: {}
 
 # Auth configuration
 auth:

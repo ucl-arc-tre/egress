@@ -79,8 +79,8 @@ func TestGetFiles(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := &Handler{
-				s3: s3.NewMock(tc.s3client),
-				db: inmemory.New(),
+				storage: s3.NewMock(tc.s3client),
+				db:      inmemory.New(),
 			}
 			for fileId, userId := range tc.approvals {
 				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)
@@ -176,8 +176,8 @@ func TestGetFileId(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := &Handler{
-				s3: s3.NewMock(tc.s3client),
-				db: inmemory.New(),
+				storage: s3.NewMock(tc.s3client),
+				db:      inmemory.New(),
 			}
 			for fileId, userId := range tc.approvals {
 				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)

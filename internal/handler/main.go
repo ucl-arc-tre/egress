@@ -11,13 +11,12 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/db"
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 	"github.com/ucl-arc-tre/egress/internal/storage"
-	"github.com/ucl-arc-tre/egress/internal/storage/s3"
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 type Handler struct {
-	db db.Interface
-	s3 storage.Interface
+	db      db.Interface
+	storage storage.Interface
 }
 
 func New() *Handler {
@@ -28,7 +27,11 @@ func New() *Handler {
 	if err := db.Migrate(); err != nil {
 		panic(err)
 	}
-	return &Handler{db: db, s3: s3.New()}
+	storage, err := storage.Provider(config.StorageConfig())
+	if err != nil {
+		panic(err)
+	}
+	return &Handler{db: db, storage: storage}
 }
 
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
@@ -51,15 +54,9 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 		return
 	}
 
-	filesMetadata := []types.FileMetadata{}
-	switch location.StorageBackendKind() {
-	case types.StorageBackendKindS3:
-		filesMetadata, err = h.s3.List(ctx, *location)
-	default:
-		err = types.NewErrInvalidObjectF("unspported storage backend kind")
-	}
+	filesMetadata, err := h.storage.List(ctx, *location)
 	if err != nil {
-		setError(ctx, projectId, err, "Failed to get list files from storage backend")
+		setError(ctx, projectId, err, "Failed to get list of files from storage")
 		return
 	}
 
@@ -104,15 +101,9 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 
-	var file *types.File
-	switch location.StorageBackendKind() {
-	case types.StorageBackendKindS3:
-		file, err = h.s3.Get(ctx, *location, types.FileId(fileId))
-	default:
-		err = types.NewErrInvalidObjectF("unspported storage backend kind")
-	}
+	file, err := h.storage.Get(ctx, *location, types.FileId(fileId))
 	if err != nil {
-		setError(ctx, projectId, err, "Failed to get list files from storage")
+		setError(ctx, projectId, err, "Failed to get file from storage")
 		return
 	}
 	defer func() {
