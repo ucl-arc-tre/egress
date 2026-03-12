@@ -28,7 +28,7 @@ spec:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
-              drop: ["all"]
+              drop: ["ALL"]
           resources:
             requests:
               memory: {{ .Values.resources.requests.memory }}
