@@ -19,7 +19,11 @@ func Provider(cfg config.StorageConfigBundle) (Interface, error) {
 		return storage, nil
 
 	case types.StorageProviderGeneric:
-		return generic.New(), nil
+		storage, err := generic.New(cfg.TLSCertDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialise generic provider: %w", err)
+		}
+		return storage, nil
 	}
 	// An unsupported backend should have been failed by Helm
 	// So, this is fallback
