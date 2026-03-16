@@ -1,0 +1,41 @@
+# ClusterIssuer for bootstrapping cert-manager's self-signed mechanism
+# Used only for signing the internal CA cert below
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+# CA certificate issued by the issuer above
+# The resulting key pair is stored in the cert-manager namespace and used
+# by the ClusterIssuer issuing mTLS leaf certs for services in the cluster
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: internal-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: internal-ca
+  secretName: internal-ca-secret # pragma: allowlist secret
+  duration: 87600h   # 10 years
+  renewBefore: 240h  # 10 days
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# CA ClusterIssuer backed by CA cert above
+# Services in the cluster reference this issuer in their Certificate
+# resources to request leaf certificates for mTLS auth
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: internal-ca-secret # pragma: allowlist secret

@@ -42,3 +42,8 @@ auth:
   basic:
     username: egressuser
     password: egressuser # pragma: allowlist secret
+
+tls:
+  certManager:
+    duration: 720h # 30 days
+    renewBefore: 240h # 10 days

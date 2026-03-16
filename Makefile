@@ -33,7 +33,7 @@ test-unit:  ## Run unit tests
 	go test ./internal/...
 	go test ./pkg/...
 
-test-e2e: dev-k3d dev-rustfs dev-rqlite ## Run end-to-end tests
+test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
@@ -69,6 +69,17 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--wait; \
 	fi
 	k3d kubeconfig get $(K3D_CLUSTER_NAME) > $(DEV_KUBECONFIG_PATH)
+
+dev-certmanager: ## Install cert-manager and setup a CA for issuing mTLS certs
+	helm repo add jetstack https://charts.jetstack.io
+	helm repo update jetstack
+	helm upgrade cert-manager jetstack/cert-manager -n cert-manager --create-namespace --install \
+      --version v1.20.0 \
+	  --set crds.enabled=true
+	kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=60s
+	kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=60s
+	# Bootstrap CA
+	kubectl apply -f deploy/dev/cert-manager/ca.yaml
 
 dev-rustfs: ## Install rustfs as an S3 compatible object store
 	helm repo add rustfs https://charts.rustfs.com

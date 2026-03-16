@@ -1,0 +1,27 @@
+{{- $name := .Release.Name -}}
+{{- $namespace := .Release.Namespace -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    "app.kubernetes.io/name": {{ $name }}
+spec:
+  secretName: {{ $name }}-tls-secret
+  duration: {{ .Values.tls.certManager.duration }}
+  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - {{ $name }}
+    - {{ $name }}.{{ $namespace }}
+    - {{ $name }}.{{ $namespace }}.svc
+    - {{ $name }}.{{ $namespace }}.svc.cluster.local
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
