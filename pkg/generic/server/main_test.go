@@ -19,13 +19,7 @@ import (
 // and returns a Handler rooted at that directory.
 func newTestHandler(t *testing.T, files map[string]string) *Handler {
 	t.Helper()
-	dir := t.TempDir()
-	for key, content := range files {
-		path := filepath.Join(dir, key)
-		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
-	}
-	return New(dir)
+	return newTestHandlerWithOpts(t, files)
 }
 
 func etag(t *testing.T, h *Handler, fileKey string) string {

@@ -54,10 +54,13 @@ func TestCustomETagGenerator_GetFiles(t *testing.T) {
 	require.NoError(t, json.NewDecoder(writer.Body).Decode(&resp))
 	require.Len(t, resp.Files, 2)
 
+	keys := make([]string, 0, len(resp.Files))
 	for _, f := range resp.Files {
+		keys = append(keys, f.Key)
 		expected := fmt.Sprintf(`"stub-%s"`, f.Key)
 		assert.Equal(t, expected, f.Etag, "GetFiles should use the custom ETagGenerator for key %s", f.Key)
 	}
+	assert.ElementsMatch(t, []string{"a.txt", "b.txt"}, keys)
 }
 
 func TestCustomETagGenerator_GetFile(t *testing.T) {
