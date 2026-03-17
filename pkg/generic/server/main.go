@@ -48,9 +48,6 @@ func New(rootDirPath string, opts ...Option) *Handler {
 	for _, opt := range opts {
 		opt(h)
 	}
-	if h.etagGenerator == nil {
-		h.etagGenerator = DefaultETagGenerator{}
-	}
 	return h
 }
 
