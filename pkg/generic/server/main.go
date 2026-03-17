@@ -30,11 +30,33 @@ const (
 type Handler struct {
 	// Path to the directory containing the files
 	rootDirPath string
+
+	// ETagGenerator interface to generate ETags for files
+	etagGenerator ETagGenerator
 }
 
+// Option configures a Handler
+type Option func(*Handler)
+
 // New returns a Handler that serves files from the given directory.
-func New(rootDirPath string) *Handler {
-	return &Handler{rootDirPath: filepath.Clean(rootDirPath)}
+// opts allow configuration of the handler, such as setting a custom ETag generator.
+// If no custom ETag generator is provided, DefaultETagGenerator is used.
+func New(rootDirPath string, opts ...Option) *Handler {
+	h := &Handler{
+		rootDirPath:   filepath.Clean(rootDirPath),
+		etagGenerator: DefaultETagGenerator{},
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
+}
+
+// WithETagGenerator sets a custom ETag generation strategy.
+func WithETagGenerator(g ETagGenerator) Option {
+	return func(h *Handler) {
+		h.etagGenerator = g
+	}
 }
 
 // GetFiles implements GET /files.
