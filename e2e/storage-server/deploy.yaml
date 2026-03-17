@@ -1,0 +1,114 @@
+# This manfiest deploys the minimal generic storage server used
+# in e2e tests, including certs for mTLS auth
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: storage-server
+  namespace: storage
+  labels:
+    app.kubernetes.io/name: storage-server
+spec:
+  secretName: storage-server-tls-secret # pragma: allowlist secret
+  duration: 720h    # 30 days
+  renewBefore: 240h # 10 days
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+  dnsNames:
+    - storage-server
+    - storage-server.storage
+    - storage-server.storage.svc
+    - storage-server.storage.svc.cluster.local
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-server
+  namespace: storage
+  labels:
+    app.kubernetes.io/name: storage-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: storage-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: storage-server
+    spec:
+      containers:
+        - name: storage-server
+          image: localhost/storage-server:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: false
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: https
+              containerPort: 8800
+              protocol: TCP
+          livenessProbe:
+            tcpSocket: # kublet cannot ping over TLS, so check for open port
+              port: https
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket: # kublet cannot ping over TLS, so check for open port
+              port: https
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+              cpu: 200m
+          volumeMounts:
+            - name: storage-root
+              mountPath: /storage-root
+            - name: tls
+              mountPath: /etc/storage-server/tls
+              readOnly: true
+      volumes:
+        - name: storage-root
+          emptyDir: {}
+        - name: tls
+          secret:
+            secretName: storage-server-tls-secret # pragma: allowlist secret
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-server
+  namespace: storage
+spec:
+  selector:
+    app.kubernetes.io/name: storage-server
+  ports:
+    - protocol: TCP
+      port: 8800
+      targetPort: https

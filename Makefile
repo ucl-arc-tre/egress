@@ -10,6 +10,7 @@ DEV_RUSTFS_EXTERNAL_PORT := 8081
 DEV_RQLITE_USERNAME := "dbuser"
 DEV_RQLITE_PASSWORD := "dbuser"
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
+DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
 
@@ -33,7 +34,7 @@ test-unit:  ## Run unit tests
 	go test ./internal/...
 	go test ./pkg/...
 
-test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite ## Run end-to-end tests
+test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
@@ -99,6 +100,11 @@ dev-rqlite: ## Install rqlite for storing persistent state
 	  --set-json='config.users[0].perms=["all"]' \
 	  --set replicaCount=1 \
 	  --set service.type=ClusterIP
+
+dev-storage: ## Deploy the storage server
+	docker buildx build -f e2e/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .
+	k3d image import $(DEV_STORAGE_IMAGE) -c $(K3D_CLUSTER_NAME)
+	kubectl apply -f e2e/storage-server/deploy.yaml
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
