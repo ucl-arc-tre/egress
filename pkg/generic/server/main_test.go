@@ -26,7 +26,7 @@ func etag(t *testing.T, h *Handler, fileKey string) string {
 	t.Helper()
 	info, err := os.Stat(filepath.Join(h.rootDirPath, fileKey))
 	require.NoError(t, err)
-	etag, err := h.etagGenerator.MakeETag(fileKey, info)
+	etag, err := h.etagGenerator.MakeETag(info)
 	require.NoError(t, err)
 	return etag
 }
