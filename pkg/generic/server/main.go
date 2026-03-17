@@ -2,10 +2,7 @@
 package server
 
 import (
-	"crypto/sha256"
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -90,7 +87,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		if err != nil {
 			return err
 		}
-		meta, err := fileMetadata(relPath, info)
+		meta, err := h.fileMetadata(relPath, info)
 		if err != nil {
 			return err
 		}
@@ -147,7 +144,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	eTag, err := makeETag(params.Key, info)
+	eTag, err := h.etagGenerator.MakeETag(params.Key, info)
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
@@ -160,6 +157,19 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.Header("ETag", eTag)
 	ctx.Header("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
+}
+
+func (h *Handler) fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
+	etag, err := h.etagGenerator.MakeETag(key, info)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+	return FileMetadata{
+		Key:          key,
+		Size:         info.Size(),
+		LastModified: info.ModTime(),
+		Etag:         etag,
+	}, nil
 }
 
 func isValidPrefix(prefix string) bool {
@@ -175,31 +185,6 @@ func isValidKey(key string) bool {
 // isValidETag reports whether s is a quoted ETag string as per RFC 7232.
 func isValidETag(s string) bool {
 	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
-}
-
-func fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
-	etag, err := makeETag(key, info)
-	if err != nil {
-		return FileMetadata{}, err
-	}
-	return FileMetadata{
-		Key:          key,
-		Size:         info.Size(),
-		LastModified: info.ModTime(),
-		Etag:         etag,
-	}, nil
-}
-
-func makeETag(key string, info fs.FileInfo) (string, error) {
-	hash := sha256.New()
-	hash.Write([]byte(key))
-	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {
-		return "", err
-	}
-	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().UnixNano()); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf(`"%x"`, hash.Sum(nil)), nil
 }
 
 func internalServerError(ctx *gin.Context, err error, msg string) {

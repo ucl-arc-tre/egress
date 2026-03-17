@@ -28,11 +28,11 @@ func newTestHandler(t *testing.T, files map[string]string) *Handler {
 	return New(dir)
 }
 
-func etag(t *testing.T, s *Handler, fileKey string) string {
+func etag(t *testing.T, h *Handler, fileKey string) string {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(s.rootDirPath, fileKey))
+	info, err := os.Stat(filepath.Join(h.rootDirPath, fileKey))
 	require.NoError(t, err)
-	etag, err := makeETag(fileKey, info)
+	etag, err := h.etagGenerator.MakeETag(fileKey, info)
 	require.NoError(t, err)
 	return etag
 }
