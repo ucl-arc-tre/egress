@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,9 +23,7 @@ func newTestHandler(t *testing.T, files map[string]string) *Handler {
 
 func etag(t *testing.T, h *Handler, fileKey string) string {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(h.rootDirPath, fileKey))
-	require.NoError(t, err)
-	etag, err := h.etagGenerator.GenerateETag(info)
+	etag, err := h.etagGenerator.GenerateETag(filepath.Join(h.rootDirPath, fileKey))
 	require.NoError(t, err)
 	return etag
 }

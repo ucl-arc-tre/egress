@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,8 +18,8 @@ import (
 // stubETagGenerator returns a deterministic ETag based only on the key
 type stubETagGenerator struct{}
 
-func (g stubETagGenerator) GenerateETag(info fs.FileInfo) (string, error) {
-	return fmt.Sprintf(`"stub-%s"`, info.Name()), nil
+func (g stubETagGenerator) GenerateETag(path string) (string, error) {
+	return fmt.Sprintf(`"stub-%s"`, filepath.Base(path)), nil
 }
 
 func newTestHandlerWithOpts(t *testing.T, files map[string]string, opts ...Option) *Handler {
@@ -95,9 +94,7 @@ func TestCustomETagGenerator_GetFileRejectsDefaultETag(t *testing.T) {
 
 	// Compute the ETag that DefaultETagGenerator would produce — this should
 	// NOT match because we configured the stub generator.
-	info, err := os.Stat(filepath.Join(h.rootDirPath, "data.txt"))
-	require.NoError(t, err)
-	defaultETag, err := DefaultETagGenerator{}.GenerateETag(info)
+	defaultETag, err := DefaultETagGenerator{}.GenerateETag(filepath.Join(h.rootDirPath, "data.txt"))
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()
@@ -118,9 +115,7 @@ func TestDefaultETagGeneratorUsedWhenNoOptionProvided(t *testing.T) {
 	}
 	h := newTestHandlerWithOpts(t, files) // no WithETagGenerator option
 
-	info, err := os.Stat(filepath.Join(h.rootDirPath, "file.txt"))
-	require.NoError(t, err)
-	expectedETag, err := DefaultETagGenerator{}.GenerateETag(info)
+	expectedETag, err := DefaultETagGenerator{}.GenerateETag(filepath.Join(h.rootDirPath, "file.txt"))
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()

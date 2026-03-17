@@ -4,13 +4,13 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"io/fs"
+	"os"
 )
 
-// ETagGenerator computes an ETag value for a stored file.
+// ETagGenerator computes an ETag value for a file stored at path.
 // Implementations must return a quoted string as per RFC 7232 (e.g. `"abc123"`).
 type ETagGenerator interface {
-	GenerateETag(info fs.FileInfo) (string, error)
+	GenerateETag(path string) (string, error)
 }
 
 // DefaultETagGenerator is the out-of-the-box ETag strategy.
@@ -28,7 +28,12 @@ func WithETagGenerator(g ETagGenerator) Option {
 	}
 }
 
-func (g DefaultETagGenerator) GenerateETag(info fs.FileInfo) (string, error) {
+func (g DefaultETagGenerator) GenerateETag(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
 	hash := sha256.New()
 	hash.Write([]byte(info.Name()))
 	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {

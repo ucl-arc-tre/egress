@@ -78,11 +78,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
 			return nil
 		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		meta, err := h.fileMetadata(relPath, info)
+		meta, err := h.fileMetadata(relPath)
 		if err != nil {
 			return err
 		}
@@ -139,7 +135,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	eTag, err := h.etagGenerator.GenerateETag(info)
+	eTag, err := h.etagGenerator.GenerateETag(file.Name())
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
@@ -160,8 +156,15 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
-func (h *Handler) fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
-	etag, err := h.etagGenerator.GenerateETag(info)
+func (h *Handler) fileMetadata(key string) (FileMetadata, error) {
+	path := filepath.Join(h.rootDirPath, key)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	etag, err := h.etagGenerator.GenerateETag(path)
 	if err != nil {
 		return FileMetadata{}, err
 	}
