@@ -20,7 +20,8 @@ type DefaultETagGenerator struct{}
 // WithETagGenerator sets a custom ETag generation strategy.
 func WithETagGenerator(g ETagGenerator) Option {
 	if g == nil {
-		panic("server: ETagGenerator must not be nil")
+		// No-op when a nil generator is provided; keep the existing/default generator.
+		return func(h *Handler) {}
 	}
 	return func(h *Handler) {
 		h.etagGenerator = g

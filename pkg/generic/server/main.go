@@ -38,6 +38,8 @@ type Option func(*Handler)
 // New returns a Handler that serves files from the given directory.
 // opts allow configuration of the handler, such as setting a custom ETag generator.
 // If no custom ETag generator is provided, DefaultETagGenerator is used.
+// opts allow configuration of the handler, such as setting a custom ETag generator.
+// If no custom ETag generator is provided, DefaultETagGenerator is used.
 func New(rootDirPath string, opts ...Option) *Handler {
 	h := &Handler{
 		rootDirPath:   filepath.Clean(rootDirPath),
@@ -45,6 +47,9 @@ func New(rootDirPath string, opts ...Option) *Handler {
 	}
 	for _, opt := range opts {
 		opt(h)
+	}
+	if h.etagGenerator == nil {
+		h.etagGenerator = DefaultETagGenerator{}
 	}
 	return h
 }
