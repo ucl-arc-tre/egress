@@ -13,6 +13,13 @@ type ETagGenerator interface {
 
 type DefaultETagGenerator struct{}
 
+// WithETagGenerator sets a custom ETag generation strategy.
+func WithETagGenerator(g ETagGenerator) Option {
+	return func(h *Handler) {
+		h.etagGenerator = g
+	}
+}
+
 func (g DefaultETagGenerator) MakeETag(key string, info fs.FileInfo) (string, error) {
 	hash := sha256.New()
 	hash.Write([]byte(key))

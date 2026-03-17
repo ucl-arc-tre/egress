@@ -49,13 +49,6 @@ func New(rootDirPath string, opts ...Option) *Handler {
 	return h
 }
 
-// WithETagGenerator sets a custom ETag generation strategy.
-func WithETagGenerator(g ETagGenerator) Option {
-	return func(h *Handler) {
-		h.etagGenerator = g
-	}
-}
-
 // GetFiles implements GET /files.
 func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 	matches := []FileMetadata{}
