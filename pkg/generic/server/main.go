@@ -142,7 +142,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	eTag, err := h.etagGenerator.MakeETag(info)
+	eTag, err := h.etagGenerator.GenerateETag(info)
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
@@ -164,7 +164,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 }
 
 func (h *Handler) fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
-	etag, err := h.etagGenerator.MakeETag(info)
+	etag, err := h.etagGenerator.GenerateETag(info)
 	if err != nil {
 		return FileMetadata{}, err
 	}

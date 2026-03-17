@@ -19,7 +19,7 @@ import (
 // stubETagGenerator returns a deterministic ETag based only on the key
 type stubETagGenerator struct{}
 
-func (g stubETagGenerator) MakeETag(info fs.FileInfo) (string, error) {
+func (g stubETagGenerator) GenerateETag(info fs.FileInfo) (string, error) {
 	return fmt.Sprintf(`"stub-%s"`, info.Name()), nil
 }
 
@@ -97,7 +97,7 @@ func TestCustomETagGenerator_GetFileRejectsDefaultETag(t *testing.T) {
 	// NOT match because we configured the stub generator.
 	info, err := os.Stat(filepath.Join(h.rootDirPath, "data.txt"))
 	require.NoError(t, err)
-	defaultETag, err := DefaultETagGenerator{}.MakeETag(info)
+	defaultETag, err := DefaultETagGenerator{}.GenerateETag(info)
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()
@@ -120,7 +120,7 @@ func TestDefaultETagGeneratorUsedWhenNoOptionProvided(t *testing.T) {
 
 	info, err := os.Stat(filepath.Join(h.rootDirPath, "file.txt"))
 	require.NoError(t, err)
-	expectedETag, err := DefaultETagGenerator{}.MakeETag(info)
+	expectedETag, err := DefaultETagGenerator{}.GenerateETag(info)
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()
