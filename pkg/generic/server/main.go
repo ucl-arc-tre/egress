@@ -147,6 +147,12 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
 	}
+	if !isValidETag(eTag) {
+		err := InvalidETagError{ETag: eTag, Message: "ETag must be quoted"}
+		internalServerError(ctx, err, "invalid ETag")
+		return
+	}
+
 	if eTag != requestedETag {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
@@ -162,6 +168,10 @@ func (h *Handler) fileMetadata(key string, info fs.FileInfo) (FileMetadata, erro
 	if err != nil {
 		return FileMetadata{}, err
 	}
+	if !isValidETag(etag) {
+		return FileMetadata{}, InvalidETagError{ETag: etag, Message: "ETag must be quoted"}
+	}
+
 	return FileMetadata{
 		Key:          key,
 		Size:         info.Size(),
