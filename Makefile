@@ -11,6 +11,7 @@ DEV_RQLITE_USERNAME := "dbuser"
 DEV_RQLITE_PASSWORD := "dbuser"
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
 DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
+DEV_STORAGE_ROOT := "/tmp/storage"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
 
@@ -52,6 +53,7 @@ dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
 
 dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
+	mkdir -p $(DEV_STORAGE_ROOT)
 	if ! k3d cluster list | grep -q $(K3D_CLUSTER_NAME); then \
 	  k3d cluster create $(K3D_CLUSTER_NAME) \
 	    --image $(K3D_K3S_IMAGE_VERSION) \
@@ -65,7 +67,8 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--k3s-arg="--disable-cloud-controller@server:*" \
 		--k3s-arg="--disable-helm-controller@server:*" \
 		--k3s-arg="--etcd-disable-snapshots@server:*" \
-		--volume "$${PWD}:/repo@all" \
+		--volume "${PWD}:/repo@all" \
+		--volume "${DEV_STORAGE_ROOT}:${DEV_STORAGE_ROOT}@all" \
 		--no-lb \
 		--wait; \
 	fi

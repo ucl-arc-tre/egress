@@ -89,7 +89,9 @@ spec:
               readOnly: true
       volumes:
         - name: storage-root
-          emptyDir: {}
+          hostPath:
+            path: /tmp/storage
+            type: DirectoryOrCreate
         - name: tls
           secret:
             secretName: storage-server-tls-secret # pragma: allowlist secret
