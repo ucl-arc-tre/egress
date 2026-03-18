@@ -2,10 +2,7 @@
 package server
 
 import (
-	"crypto/sha256"
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -30,11 +27,32 @@ const (
 type Handler struct {
 	// Path to the directory containing the files
 	rootDirPath string
+
+	// ETagGenerator interface to generate ETags for files
+	etagGenerator ETagGenerator
 }
 
+// Option configures a Handler
+type Option func(*Handler)
+
 // New returns a Handler that serves files from the given directory.
-func New(rootDirPath string) *Handler {
-	return &Handler{rootDirPath: filepath.Clean(rootDirPath)}
+// rootDirPath is resolved to an absolute path before the handler is created,
+// if this fails, the handler panics.
+// opts allow configuration of the handler, such as setting a custom ETag generator.
+// If no custom ETag generator is provided, DefaultETagGenerator is used.
+func New(rootDirPath string, opts ...Option) *Handler {
+	absRootDirPath, err := filepath.Abs(rootDirPath)
+	if err != nil {
+		panic(err)
+	}
+	h := &Handler{
+		rootDirPath:   absRootDirPath,
+		etagGenerator: DefaultETagGenerator{},
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // GetFiles implements GET /files.
@@ -64,11 +82,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
 			return nil
 		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		meta, err := fileMetadata(relPath, info)
+		meta, err := h.fileMetadata(relPath)
 		if err != nil {
 			return err
 		}
@@ -124,12 +138,23 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		badRequest(ctx, "key must refer to a file, not a directory")
 		return
 	}
+	filePath, err := filepath.Abs(file.Name())
+	if err != nil {
+		internalServerError(ctx, err, "failed to get absolute path of file")
+		return
+	}
 
-	eTag, err := makeETag(params.Key, info)
+	eTag, err := h.etagGenerator.GenerateETag(filePath)
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
 	}
+	if !isValidETag(eTag) {
+		err := InvalidETagError{ETag: eTag, Message: "ETag must be quoted"}
+		internalServerError(ctx, err, "invalid ETag")
+		return
+	}
+
 	if eTag != requestedETag {
 		ctx.JSON(http.StatusPreconditionFailed, ErrorResponse{Message: "ETag mismatch"})
 		return
@@ -138,6 +163,30 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.Header("ETag", eTag)
 	ctx.Header("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
+}
+
+func (h *Handler) fileMetadata(key string) (FileMetadata, error) {
+	path := filepath.Join(h.rootDirPath, filepath.Clean(key))
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+
+	etag, err := h.etagGenerator.GenerateETag(path)
+	if err != nil {
+		return FileMetadata{}, err
+	}
+	if !isValidETag(etag) {
+		return FileMetadata{}, InvalidETagError{ETag: etag, Message: "ETag must be quoted"}
+	}
+
+	return FileMetadata{
+		Key:          key,
+		Size:         info.Size(),
+		LastModified: info.ModTime(),
+		Etag:         etag,
+	}, nil
 }
 
 func isValidPrefix(prefix string) bool {
@@ -153,31 +202,6 @@ func isValidKey(key string) bool {
 // isValidETag reports whether s is a quoted ETag string as per RFC 7232.
 func isValidETag(s string) bool {
 	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
-}
-
-func fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
-	etag, err := makeETag(key, info)
-	if err != nil {
-		return FileMetadata{}, err
-	}
-	return FileMetadata{
-		Key:          key,
-		Size:         info.Size(),
-		LastModified: info.ModTime(),
-		Etag:         etag,
-	}, nil
-}
-
-func makeETag(key string, info fs.FileInfo) (string, error) {
-	hash := sha256.New()
-	hash.Write([]byte(key))
-	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {
-		return "", err
-	}
-	if err := binary.Write(hash, binary.LittleEndian, info.ModTime().UnixNano()); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf(`"%x"`, hash.Sum(nil)), nil
 }
 
 func internalServerError(ctx *gin.Context, err error, msg string) {

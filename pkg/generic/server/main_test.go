@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,20 +18,12 @@ import (
 // and returns a Handler rooted at that directory.
 func newTestHandler(t *testing.T, files map[string]string) *Handler {
 	t.Helper()
-	dir := t.TempDir()
-	for key, content := range files {
-		path := filepath.Join(dir, key)
-		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
-	}
-	return New(dir)
+	return newTestHandlerWithOpts(t, files)
 }
 
-func etag(t *testing.T, s *Handler, fileKey string) string {
+func etag(t *testing.T, h *Handler, fileKey string) string {
 	t.Helper()
-	info, err := os.Stat(filepath.Join(s.rootDirPath, fileKey))
-	require.NoError(t, err)
-	etag, err := makeETag(fileKey, info)
+	etag, err := h.etagGenerator.GenerateETag(filepath.Join(h.rootDirPath, fileKey))
 	require.NoError(t, err)
 	return etag
 }
