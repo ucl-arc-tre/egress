@@ -35,7 +35,6 @@ func (g DefaultETagGenerator) GenerateETag(path string) (string, error) {
 	}
 
 	hash := sha256.New()
-	hash.Write([]byte(info.Name()))
 	if err := binary.Write(hash, binary.LittleEndian, info.Size()); err != nil {
 		return "", err
 	}
