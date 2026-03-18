@@ -36,11 +36,17 @@ type Handler struct {
 type Option func(*Handler)
 
 // New returns a Handler that serves files from the given directory.
+// rootDirPath is resolved to an absolute path before the handler is created,
+// if this fails, the handler panics.
 // opts allow configuration of the handler, such as setting a custom ETag generator.
 // If no custom ETag generator is provided, DefaultETagGenerator is used.
 func New(rootDirPath string, opts ...Option) *Handler {
+	absRootDirPath, err := filepath.Abs(rootDirPath)
+	if err != nil {
+		panic(err)
+	}
 	h := &Handler{
-		rootDirPath:   filepath.Clean(rootDirPath),
+		rootDirPath:   absRootDirPath,
 		etagGenerator: DefaultETagGenerator{},
 	}
 	for _, opt := range opts {
@@ -132,8 +138,13 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		badRequest(ctx, "key must refer to a file, not a directory")
 		return
 	}
+	filePath, err := filepath.Abs(file.Name())
+	if err != nil {
+		internalServerError(ctx, err, "failed to get absolute path of file")
+		return
+	}
 
-	eTag, err := h.etagGenerator.GenerateETag(file.Name())
+	eTag, err := h.etagGenerator.GenerateETag(filePath)
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
