@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,7 +19,7 @@ import (
 // stubETagGenerator returns a deterministic ETag based only on the key
 type stubETagGenerator struct{}
 
-func (g stubETagGenerator) GenerateETag(path string) (string, error) {
+func (g stubETagGenerator) GenerateETag(path string, info fs.FileInfo) (string, error) {
 	return fmt.Sprintf(`"stub-%s"`, filepath.Base(path)), nil
 }
 
@@ -94,7 +95,10 @@ func TestCustomETagGenerator_GetFileRejectsDefaultETag(t *testing.T) {
 
 	// Compute the ETag that DefaultETagGenerator would produce — this should
 	// NOT match because we configured the stub generator.
-	defaultETag, err := DefaultETagGenerator{}.GenerateETag(filepath.Join(h.rootDirPath, "data.txt"))
+	f := filepath.Join(h.rootDirPath, "data.txt")
+	fi, err := os.Stat(f)
+	require.NoError(t, err)
+	defaultETag, err := DefaultETagGenerator{}.GenerateETag(f, fi)
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()
@@ -111,18 +115,21 @@ func TestCustomETagGenerator_GetFileRejectsDefaultETag(t *testing.T) {
 
 func TestDefaultETagGeneratorUsedWhenNoOptionProvided(t *testing.T) {
 	files := map[string]string{
-		"file.txt": "content",
+		"data.txt": "content",
 	}
 	h := newTestHandlerWithOpts(t, files) // no WithETagGenerator option
 
-	expectedETag, err := DefaultETagGenerator{}.GenerateETag(filepath.Join(h.rootDirPath, "file.txt"))
+	f := filepath.Join(h.rootDirPath, "data.txt")
+	fi, err := os.Stat(f)
+	require.NoError(t, err)
+	expectedETag, err := DefaultETagGenerator{}.GenerateETag(f, fi)
 	require.NoError(t, err)
 
 	writer := httptest.NewRecorder()
 	_, router := gin.CreateTestContext(writer)
 	RegisterHandlers(router, h)
 
-	req, _ := http.NewRequest(http.MethodGet, "/file?key=file.txt", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/file?key=data.txt", nil)
 	req.Header.Set("If-Match", expectedETag)
 	router.ServeHTTP(writer, req)
 

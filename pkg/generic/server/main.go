@@ -82,12 +82,16 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 		if params.Prefix != nil && !strings.HasPrefix(relPath, *params.Prefix) {
 			return nil
 		}
-		meta, err := h.fileMetadata(relPath)
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		meta, err := h.fileMetadata(relPath, info)
 		if err != nil {
 			return err
 		}
 		matches = append(matches, meta)
-		if len(matches) > maxFileCount {
+		if len(matches) >= maxFileCount {
 			log.Info().Msg("Maximum file count reached, truncating output.")
 			return fs.SkipAll
 		}
@@ -144,7 +148,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 		return
 	}
 
-	eTag, err := h.etagGenerator.GenerateETag(filePath)
+	eTag, err := h.etagGenerator.GenerateETag(filePath, info)
 	if err != nil {
 		internalServerError(ctx, err, "failed to compute ETag")
 		return
@@ -165,15 +169,10 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 	ctx.DataFromReader(http.StatusOK, info.Size(), "application/octet-stream", file, nil)
 }
 
-func (h *Handler) fileMetadata(key string) (FileMetadata, error) {
+func (h *Handler) fileMetadata(key string, info fs.FileInfo) (FileMetadata, error) {
 	path := filepath.Join(h.rootDirPath, filepath.Clean(key))
 
-	info, err := os.Stat(path)
-	if err != nil {
-		return FileMetadata{}, err
-	}
-
-	etag, err := h.etagGenerator.GenerateETag(path)
+	etag, err := h.etagGenerator.GenerateETag(path, info)
 	if err != nil {
 		return FileMetadata{}, err
 	}
