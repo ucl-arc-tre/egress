@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
+}
 
 // newTestHandler creates a temporary directory, writes the given files into it,
 // and returns a Handler rooted at that directory.
@@ -23,7 +29,11 @@ func newTestHandler(t *testing.T, files map[string]string) *Handler {
 
 func etag(t *testing.T, h *Handler, fileKey string) string {
 	t.Helper()
-	etag, err := h.etagGenerator.GenerateETag(filepath.Join(h.rootDirPath, fileKey))
+	f := filepath.Join(h.rootDirPath, fileKey)
+	fi, err := os.Stat(f)
+	require.NoError(t, err)
+
+	etag, err := h.etagGenerator.GenerateETag(f, fi)
 	require.NoError(t, err)
 	return etag
 }
