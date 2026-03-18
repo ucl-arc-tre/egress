@@ -166,7 +166,7 @@ func (h *Handler) GetFile(ctx *gin.Context, params GetFileParams) {
 }
 
 func (h *Handler) fileMetadata(key string) (FileMetadata, error) {
-	path := filepath.Join(h.rootDirPath, key)
+	path := filepath.Join(h.rootDirPath, filepath.Clean(key))
 
 	info, err := os.Stat(path)
 	if err != nil {
