@@ -87,7 +87,7 @@ func (h *Handler) GetFiles(ctx *gin.Context, params GetFilesParams) {
 			return err
 		}
 		matches = append(matches, meta)
-		if len(matches) > maxFileCount {
+		if len(matches) >= maxFileCount {
 			log.Info().Msg("Maximum file count reached, truncating output.")
 			return fs.SkipAll
 		}
