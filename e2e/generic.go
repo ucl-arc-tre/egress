@@ -19,5 +19,5 @@ func (p *GenericProvider) FilesLocation() string {
 func (p *GenericProvider) PutFile(key, content string) error {
 	// Storage root directory is created when K3d is spun up
 	dest := filepath.Join(storageRootOnHost, filepath.FromSlash(key))
-	return os.WriteFile(dest, []byte(content), 0o644)
+	return os.WriteFile(dest, []byte(content), 0o644) // #nosec G306 -- server needs to read
 }

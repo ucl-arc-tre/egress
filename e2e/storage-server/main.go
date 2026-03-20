@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -28,7 +29,7 @@ const (
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	if err := os.MkdirAll(rootDir, 0o755); err != nil {
+	if err := os.MkdirAll(rootDir, 0o750); err != nil {
 		log.Fatal().Err(err).Str("dir", rootDir).Msg("failed to create root directory")
 	}
 
@@ -47,9 +48,10 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:      serverAddr,
-		Handler:   router,
-		TLSConfig: tlsCfg,
+		Addr:              serverAddr,
+		Handler:           router,
+		TLSConfig:         tlsCfg,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Info().
 		Str("serverAddr", serverAddr).
@@ -65,7 +67,8 @@ func main() {
 }
 
 func newMTLSConfig(dir string) (*tls.Config, error) {
-	caCertPEM, err := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	caPath := filepath.Clean(filepath.Join(dir, "ca.crt"))
+	caCertPEM, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert: %w", err)
 	}

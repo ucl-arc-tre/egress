@@ -145,7 +145,8 @@ func stripQuotes(s string) string {
 //	tls.crt – client certificate for TLS handshake
 //	tls.key – private key for client certificate
 func newMTLSTransport(dir string) (http.RoundTripper, error) {
-	caCert, err := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	caPath := filepath.Clean(filepath.Join(dir, "ca.crt"))
+	caCert, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert: %w", err)
 	}
