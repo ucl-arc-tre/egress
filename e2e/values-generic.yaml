@@ -1,0 +1,32 @@
+image:
+  repository: localhost/ucl-arc-tre-egress
+  tag: release
+
+replicaCount: 1
+
+service:
+  type: NodePort
+  nodePort: 30001
+  port: 80
+
+debug: true
+
+storage:
+  provider: generic
+
+db:
+  provider: rqlite
+  rqlite:
+    baseUrl: http://rqlite.rqlite.svc.cluster.local
+    username: dbuser
+    password: dbuser # pragma: allowlist secret
+
+auth:
+  basic:
+    username: egressuser
+    password: egressuser # pragma: allowlist secret
+
+tls:
+  certManager:
+    duration: 720h # 30 days
+    renewBefore: 240h # 10 days

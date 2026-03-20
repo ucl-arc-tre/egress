@@ -15,6 +15,10 @@ spec:
     metadata:
       labels:
         "app.kubernetes.io/name": {{ $name }}
+      annotations:
+        # Roll deployment when the config changes; used in e2e tests
+        # https://helm.sh/docs/howto/charts_tips_and_tricks/#automatically-roll-deployments
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       containers:

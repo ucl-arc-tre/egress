@@ -38,8 +38,14 @@ test-unit:  ## Run unit tests
 test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
-	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
-	go test ./e2e/... -count=1
+	# s3 storage
+	echo -e "\033[33mRunning e2e tests with s3 provider...\033[0m"
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-s3.yaml egress ./chart
+	STORAGE_PROVIDER="s3" go test ./e2e/... -count=1
+	# generic storage
+	echo -e "\033[33mRunning e2e tests with generic storage provider...\033[0m"
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-generic.yaml egress ./chart
+	STORAGE_PROVIDER="generic" go test ./e2e/... -count=1
 
 dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
