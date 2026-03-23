@@ -1,4 +1,4 @@
-# This manfiest deploys the minimal generic storage server used
+# This manifest deploys the minimal generic storage server used
 # in e2e tests, including certs for mTLS auth
 apiVersion: v1
 kind: Namespace
