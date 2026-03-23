@@ -1,5 +1,7 @@
+{{- if eq .Values.storage.provider "generic" -}}
 {{- $name := .Release.Name -}}
 {{- $namespace := .Release.Namespace -}}
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -25,3 +27,4 @@ spec:
   issuerRef:
     name: ca-issuer
     kind: ClusterIssuer
+{{- end }}

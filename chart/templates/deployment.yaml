@@ -58,9 +58,11 @@ spec:
             - name: config
               mountPath: /etc/egress
               readOnly: true
+          {{- if eq .Values.storage.provider "generic" }}
             - name: tls
               mountPath: /etc/egress/tls
               readOnly: true
+          {{- end }}
           {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
             - name: repo
               mountPath: /repo
@@ -77,9 +79,11 @@ spec:
         - name: config
           secret:
             secretName: {{ $name }}-config
+      {{- if eq .Values.storage.provider "generic" }}
         - name: tls
           secret:
             secretName: {{ $name }}-tls-secret
+      {{- end }}
       {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
         - name: repo
           hostPath:
