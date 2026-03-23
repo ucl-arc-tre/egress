@@ -154,17 +154,26 @@ func newMTLSTransport(dir string) (http.RoundTripper, error) {
 	if !caCertPool.AppendCertsFromPEM(caCert) {
 		return nil, fmt.Errorf("failed to parse CA cert")
 	}
-	cert, err := tls.LoadX509KeyPair(
-		filepath.Join(dir, "tls.crt"),
-		filepath.Join(dir, "tls.key"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load client cert/key: %w", err)
+	certPath := filepath.Join(dir, "tls.crt")
+	keyPath := filepath.Join(dir, "tls.key")
+
+	// Fail-fast; check if cert/key files are accessible initially
+	// but are loaded dynamically on every TLS handshake
+	if _, err := tls.LoadX509KeyPair(certPath, keyPath); err != nil {
+		return nil, fmt.Errorf("failed to access client cert/key: %w", err)
 	}
 	return &http.Transport{
 		TLSClientConfig: &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			RootCAs:      caCertPool,
+			RootCAs: caCertPool,
+			// Load cert/key files upon every TLS handshake so that cert
+			// rotations are picked up without needing a service restart
+			GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load client cert/key: %w", err)
+				}
+				return &cert, nil
+			},
 		},
 	}, nil
 }
