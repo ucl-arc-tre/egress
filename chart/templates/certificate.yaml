@@ -11,8 +11,8 @@ metadata:
     "app.kubernetes.io/name": {{ $name }}
 spec:
   secretName: {{ $name }}-tls-secret
-  duration: {{ .Values.tls.certManager.duration }}
-  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  duration: {{ required "cert duration required" .Values.storage.generic.tls.certManager.duration }}
+  renewBefore: {{ required "cert renewBefore required" .Values.storage.generic.tls.certManager.renewBefore }}
   privateKey:
     algorithm: ECDSA
     size: 256

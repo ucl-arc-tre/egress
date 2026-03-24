@@ -39,7 +39,13 @@ storage:
     region: null
     access_key_id: null
     secret_access_key: null
-  generic: {}
+  generic:
+    # mTLS configuration
+    # Requires cert-manager to be already available in the cluster
+    tls:
+      certManager:
+        duration: null
+        renewBefore: null
 
 # DB configuration
 db:
@@ -56,10 +62,3 @@ auth:
   basic:
     username: null
     password: null
-
-# TLS configuration
-# Requires cert-manager to be already available in the cluster
-tls:
-  certManager:
-    duration: null
-    renewBefore: null
