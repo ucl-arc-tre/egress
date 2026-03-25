@@ -1,8 +1,9 @@
 package config
 
 type StorageConfigBundle struct {
-	Provider string
-	S3       S3StorageConfig
+	Provider   string
+	TLSCertDir string
+	S3         S3StorageConfig
 }
 
 type S3StorageConfig struct {

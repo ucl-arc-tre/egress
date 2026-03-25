@@ -15,6 +15,7 @@ import (
 
 const (
 	configPath  = "/etc/egress/config.yaml"
+	tlsCertDir  = "/etc/egress/tls"
 	defaultPort = "8080"
 
 	BaseURL                = "/v0"
@@ -54,8 +55,10 @@ func IsDebug() bool {
 
 func StorageConfig() StorageConfigBundle {
 	provider := k.String("storage.provider")
-	cfg := StorageConfigBundle{Provider: provider}
-
+	cfg := StorageConfigBundle{
+		Provider:   provider,
+		TLSCertDir: tlsCertDir,
+	}
 	if provider == string(types.StorageProviderS3) {
 		cfg.S3 = S3StorageConfig{
 			Region:          k.String("storage.s3.region"),

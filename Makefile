@@ -10,6 +10,8 @@ DEV_RUSTFS_EXTERNAL_PORT := 8081
 DEV_RQLITE_USERNAME := "dbuser"
 DEV_RQLITE_PASSWORD := "dbuser"
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
+DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
+DEV_STORAGE_ROOT := "/tmp/storage"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
 
@@ -33,11 +35,17 @@ test-unit:  ## Run unit tests
 	go test ./internal/...
 	go test ./pkg/...
 
-test-e2e: dev-k3d dev-rustfs dev-rqlite ## Run end-to-end tests
+test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
-	helm upgrade --install --create-namespace -n e2e -f e2e/values.yaml egress ./chart
-	go test ./e2e/... -count=1
+	# s3 storage
+	echo -e "\033[33mRunning e2e tests with s3 provider...\033[0m"
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-s3.yaml egress ./chart
+	STORAGE_PROVIDER="s3" go test ./e2e/... -count=1
+	# generic storage
+	echo -e "\033[33mRunning e2e tests with generic storage provider...\033[0m"
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-generic.yaml egress ./chart
+	STORAGE_PROVIDER="generic" go test ./e2e/... -count=1
 
 dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
@@ -51,6 +59,7 @@ dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
 
 dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
+	mkdir -p $(DEV_STORAGE_ROOT)
 	if ! k3d cluster list | grep -q $(K3D_CLUSTER_NAME); then \
 	  k3d cluster create $(K3D_CLUSTER_NAME) \
 	    --image $(K3D_K3S_IMAGE_VERSION) \
@@ -64,11 +73,23 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--k3s-arg="--disable-cloud-controller@server:*" \
 		--k3s-arg="--disable-helm-controller@server:*" \
 		--k3s-arg="--etcd-disable-snapshots@server:*" \
-		--volume "$${PWD}:/repo@all" \
+		--volume "${PWD}:/repo@all" \
+		--volume "${DEV_STORAGE_ROOT}:${DEV_STORAGE_ROOT}@all" \
 		--no-lb \
 		--wait; \
 	fi
 	k3d kubeconfig get $(K3D_CLUSTER_NAME) > $(DEV_KUBECONFIG_PATH)
+
+dev-certmanager: ## Install cert-manager and setup a CA for issuing mTLS certs
+	helm repo add jetstack https://charts.jetstack.io
+	helm repo update jetstack
+	helm upgrade cert-manager jetstack/cert-manager -n cert-manager --create-namespace --install \
+      --version v1.20.0 \
+	  --set crds.enabled=true
+	kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=60s
+	kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=60s
+	# Bootstrap CA
+	kubectl apply -f deploy/dev/cert-manager/ca.yaml
 
 dev-rustfs: ## Install rustfs as an S3 compatible object store
 	helm repo add rustfs https://charts.rustfs.com
@@ -88,6 +109,11 @@ dev-rqlite: ## Install rqlite for storing persistent state
 	  --set-json='config.users[0].perms=["all"]' \
 	  --set replicaCount=1 \
 	  --set service.type=ClusterIP
+
+dev-storage: ## Deploy the storage server
+	docker buildx build -f e2e/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .
+	k3d image import $(DEV_STORAGE_IMAGE) -c $(K3D_CLUSTER_NAME)
+	kubectl apply -f e2e/storage-server/deploy.yaml
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")

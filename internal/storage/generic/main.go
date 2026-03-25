@@ -3,9 +3,13 @@ package generic
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ucl-arc-tre/egress/internal/types"
@@ -17,14 +21,18 @@ type Storage struct {
 
 // Uses a single reusable http.Client for all requests
 // mTLS auth is handled at the transport layer
-func New() *Storage {
+func New(tlsCertDir string) (*Storage, error) {
+	transport, err := newMTLSTransport(tlsCertDir)
+	if err != nil {
+		return nil, fmt.Errorf("[generic] failed to configure TLS transport: %w", err)
+	}
 	return &Storage{
 		getter: &httpAPIClientGetter{
 			http: &http.Client{
-				Transport: http.DefaultTransport,
+				Transport: transport,
 			},
 		},
-	}
+	}, nil
 }
 
 func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types.FileMetadata, error) {
@@ -127,4 +135,45 @@ func extractResponseMessageOrDefault(body *ErrorResponse, fallback string) strin
 
 func stripQuotes(s string) string {
 	return strings.ReplaceAll(s, `"`, "")
+}
+
+// Builds an http.Transport configured for mTLS using the
+// CA cert, client cert and client key found in given directory
+// Expected files:
+//
+//	ca.crt  – CA certificate
+//	tls.crt – client certificate for TLS handshake
+//	tls.key – private key for client certificate
+func newMTLSTransport(dir string) (http.RoundTripper, error) {
+	caPath := filepath.Clean(filepath.Join(dir, "ca.crt"))
+	caCert, err := os.ReadFile(caPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA cert: %w", err)
+	}
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("failed to parse CA cert")
+	}
+	certPath := filepath.Join(dir, "tls.crt")
+	keyPath := filepath.Join(dir, "tls.key")
+
+	// Fail-fast; check if cert/key files are accessible initially
+	// but are loaded dynamically on every TLS handshake
+	if _, err := tls.LoadX509KeyPair(certPath, keyPath); err != nil {
+		return nil, fmt.Errorf("failed to access client cert/key: %w", err)
+	}
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caCertPool,
+			// Load cert/key files upon every TLS handshake so that cert
+			// rotations are picked up without needing a service restart
+			GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load client cert/key: %w", err)
+				}
+				return &cert, nil
+			},
+		},
+	}, nil
 }

@@ -15,6 +15,10 @@ spec:
     metadata:
       labels:
         "app.kubernetes.io/name": {{ $name }}
+      annotations:
+        # Roll deployment when the config changes; used in e2e tests
+        # https://helm.sh/docs/howto/charts_tips_and_tricks/#automatically-roll-deployments
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       containers:
@@ -54,6 +58,11 @@ spec:
             - name: config
               mountPath: /etc/egress
               readOnly: true
+          {{- if eq .Values.storage.provider "generic" }}
+            - name: tls
+              mountPath: /etc/egress/tls
+              readOnly: true
+          {{- end }}
           {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
             - name: repo
               mountPath: /repo
@@ -70,6 +79,11 @@ spec:
         - name: config
           secret:
             secretName: {{ $name }}-config
+      {{- if eq .Values.storage.provider "generic" }}
+        - name: tls
+          secret:
+            secretName: {{ $name }}-tls-secret
+      {{- end }}
       {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
         - name: repo
           hostPath:

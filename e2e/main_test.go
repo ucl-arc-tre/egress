@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,25 +9,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/ucl-arc-tre/egress/internal/config"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/uuid"
 )
 
 const (
 	baseUrl          = "http://localhost:8080"
+	username         = "egressuser"
+	password         = "egressuser" /* pragma: allowlist secret */
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 2 * time.Minute
 )
 
 var (
-	s3Location = fmt.Sprintf("s3://%s", bucketName)
-	username   = "egressuser"
-	password   = "egressuser" /* pragma: allowlist secret */
+	storageProvider = newStorageProviderFromEnv()
+	filesLocation   = storageProvider.FilesLocation()
 )
 
 func init() {
@@ -55,7 +52,7 @@ func canPing() bool {
 
 func canListFiles() bool {
 	url := fmt.Sprintf("%s/%s/files", baseApiUrl, "p001")
-	body := strings.NewReader(fmt.Sprintf(`{"files_location":"%s"}`, s3Location))
+	body := strings.NewReader(fmt.Sprintf(`{"files_location":"%s"}`, filesLocation))
 	req, err := http.NewRequest(http.MethodGet, url, body)
 	if err != nil {
 		return false
@@ -82,7 +79,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFileList",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-			body:   makeRequestBodyF(`{"files_location":"%s"}`, s3Location),
+			body:   makeRequestBodyF(`{"files_location":"%s"}`, filesLocation),
 
 			expectedStatusCode: http.StatusOK,
 		},
@@ -106,7 +103,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFile",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
-			body:   makeRequestBodyF(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, s3Location),
+			body:   makeRequestBodyF(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, filesLocation),
 
 			expectedStatusCode: http.StatusNotFound,
 		},
@@ -135,22 +132,14 @@ func TestEndpointResponseCodes(t *testing.T) {
 	}
 }
 
-func TestApprovalAndEgressS3(t *testing.T) {
-	projectId := "pTestApprovalAndEgressS3"
-	userId := "userTestApprovalAndEgressS3"
+func TestApprovalAndEgress(t *testing.T) {
+	projectId := "pTestApprovalAndEgress"
+	userId := "userTestApprovalAndEgress"
 
 	key := uuid.New()
 	fileContent := fmt.Sprintf("hello %s", key.String())
 
-	s3Client := newS3Client()
-	putObjectOut, err := s3Client.PutObject(context.Background(), &awsS3.PutObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(key.String()),
-		Body:   strings.NewReader(fileContent),
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, putObjectOut.ETag)
-	fileId := stripQuotes(*putObjectOut.ETag)
+	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
 
 	client := newHTTPClient()
 
@@ -158,7 +147,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
@@ -167,11 +156,13 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	partialListFilesResponse := PartialListFilesResponse{}
 	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
 	assertNoError(res.Body.Close())
-	assert.NoError(t, err)
 	assert.True(t, len(partialListFilesResponse) > 0)
 	partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
 	assert.True(t, exists)
 	assert.Len(t, partialListFileResponse.Approvals, 0)
+
+	// Retrieve the file ID from the list response
+	fileId := partialListFileResponse.Id
 
 	// Approve uploaded file
 	req = must(http.NewRequest(
@@ -188,7 +179,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 	req = must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
 	req.SetBasicAuth(username, password)
 	res = must(client.Do(req))
@@ -205,7 +196,7 @@ func TestApprovalAndEgressS3(t *testing.T) {
 		makeRequestBodyF(
 			`{"required_approvals": %d,"files_location": "%s","max_file_size": %d}`,
 			1,
-			s3Location,
+			filesLocation,
 			100,
 		),
 	))
@@ -250,7 +241,7 @@ func TestAuthFailureWithIncorrectUsername(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
 	req.SetBasicAuth("badUsername", password)
 	res := must(client.Do(req))
@@ -262,15 +253,11 @@ func TestAuthFailureWithIncorrectPassword(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"files_location": "%s"}`, s3Location),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
 	req.SetBasicAuth(username, "badPassword")
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
-}
-
-func stripQuotes(s string) string {
-	return strings.ReplaceAll(s, `"`, "")
 }
 
 func makeRequestBodyF(format string, objs ...any) io.Reader {

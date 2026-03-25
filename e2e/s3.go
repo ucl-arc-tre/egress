@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -14,6 +16,21 @@ import (
 const (
 	bucketName = "bucket1"
 )
+
+type S3Provider struct{}
+
+func (p *S3Provider) FilesLocation() string {
+	return fmt.Sprintf("s3://%s", bucketName)
+}
+
+func (p *S3Provider) PutFile(key, content string) error {
+	_, err := newS3Client().PutObject(context.Background(), &awsS3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+		Body:   strings.NewReader(content),
+	})
+	return err
+}
 
 func newS3Client() *awsS3.Client {
 	cfg := must(awsConfig.LoadDefaultConfig(
