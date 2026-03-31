@@ -87,7 +87,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "ApproveFile",
 			method: http.MethodPut,
 			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
-			body:   strings.NewReader(`{"user_id":"user1"}`),
+			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted"}`),
 
 			expectedStatusCode: http.StatusNoContent,
 		},
@@ -103,7 +103,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "GetFile",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
-			body:   makeRequestBodyF(`{"required_approvals":1,"files_location":"%s","max_file_size": 1}`, filesLocation),
+			body:   makeRequestBodyF(`{"required_approvals":1,"destination":"trusted","files_location":"%s","max_file_size": 1}`, filesLocation),
 
 			expectedStatusCode: http.StatusNotFound,
 		},
@@ -133,78 +133,103 @@ func TestEndpointResponseCodes(t *testing.T) {
 }
 
 func TestApprovalAndEgress(t *testing.T) {
-	projectId := "pTestApprovalAndEgress"
-	userId := "userTestApprovalAndEgress"
+	tests := []struct {
+		name               string
+		approveDestination string
+		egressDestination  string
+		expectedStatusCode int
+	}{
+		{
+			name:               "ApprovedForTrusted-EgressToTrusted",
+			approveDestination: "trusted",
+			egressDestination:  "trusted",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:               "ApprovedForTrusted-EgressToWorld",
+			approveDestination: "trusted",
+			egressDestination:  "world",
+			expectedStatusCode: http.StatusBadRequest,
+		},
+	}
 
-	key := uuid.New()
-	fileContent := fmt.Sprintf("hello %s", key.String())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			projectId := "pTestApprovalAndEgress"
+			userId := "userTestApprovalAndEgress"
 
-	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+			key := uuid.New()
+			fileContent := fmt.Sprintf("hello %s", key.String())
 
-	client := newHTTPClient()
+			assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
 
-	// List files - expecting one with none approved
-	req := must(http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-	))
-	req.SetBasicAuth(username, password)
-	res := must(client.Do(req))
-	assert.Equal(t, http.StatusOK, res.StatusCode)
+			client := newHTTPClient()
 
-	partialListFilesResponse := PartialListFilesResponse{}
-	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
-	assertNoError(res.Body.Close())
-	assert.True(t, len(partialListFilesResponse) > 0)
-	partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
-	assert.True(t, exists)
-	assert.Len(t, partialListFileResponse.Approvals, 0)
+			// List files - expecting file to have no approvals
+			req := must(http.NewRequest(
+				http.MethodGet,
+				fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+				makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
+			))
+			req.SetBasicAuth(username, password)
+			res := must(client.Do(req))
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 
-	// Retrieve the file ID from the list response
-	fileId := partialListFileResponse.Id
+			partialListFilesResponse := PartialListFilesResponse{}
+			assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
+			assertNoError(res.Body.Close())
+			assert.True(t, len(partialListFilesResponse) > 0)
+			partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
+			assert.True(t, exists)
+			assert.Len(t, partialListFileResponse.Approvals, 0)
 
-	// Approve uploaded file
-	req = must(http.NewRequest(
-		http.MethodPut,
-		fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
-		makeRequestBodyF(`{"user_id": "%s"}`, userId),
-	))
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
-	res = must(client.Do(req))
-	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+			// Retrieve the file ID from the list response
+			fileId := partialListFileResponse.Id
 
-	// List files - expecting one approved
-	req = must(http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-	))
-	req.SetBasicAuth(username, password)
-	res = must(client.Do(req))
-	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
-	assertNoError(res.Body.Close())
-	partialListFileResponse, exists = partialListFilesResponse.FileByFilename(key.String())
-	assert.True(t, exists)
-	assert.Len(t, partialListFileResponse.Approvals, 1)
+			// Approve uploaded file for the given destination
+			req = must(http.NewRequest(
+				http.MethodPut,
+				fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
+				makeRequestBodyF(`{"user_id": "%s", "destination": "%s"}`, userId, tc.approveDestination),
+			))
+			req.Header.Set("Content-Type", "application/json")
+			req.SetBasicAuth(username, password)
+			res = must(client.Do(req))
+			assert.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	// The one file can now be downloaded
-	req = must(http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
-		makeRequestBodyF(
-			`{"required_approvals": %d,"files_location": "%s","max_file_size": %d}`,
-			1,
-			filesLocation,
-			100,
-		),
-	))
-	req.SetBasicAuth(username, password)
-	res = must(client.Do(req))
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	content := must(io.ReadAll(res.Body))
-	assert.Equal(t, fileContent, string(content))
+			// List files - expecting file to have one approval
+			req = must(http.NewRequest(
+				http.MethodGet,
+				fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+				makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
+			))
+			req.SetBasicAuth(username, password)
+			res = must(client.Do(req))
+			assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
+			assertNoError(res.Body.Close())
+			partialListFileResponse, exists = partialListFilesResponse.FileByFilename(key.String())
+			assert.True(t, exists)
+			assert.Len(t, partialListFileResponse.Approvals, 1)
+
+			// Attempt to download file to the egress destination
+			req = must(http.NewRequest(
+				http.MethodGet,
+				fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+				makeRequestBodyF(
+					`{"required_approvals": 1,"destination": "%s", "files_location": "%s","max_file_size": 100}`,
+					tc.egressDestination,
+					filesLocation,
+				),
+			))
+			req.SetBasicAuth(username, password)
+			res = must(client.Do(req))
+			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
+			if tc.expectedStatusCode == http.StatusOK {
+				content := must(io.ReadAll(res.Body))
+				assert.Equal(t, fileContent, string(content))
+			}
+		})
+	}
 }
 
 func TestApprovalIdempotency(t *testing.T) {
@@ -217,18 +242,29 @@ func TestApprovalIdempotency(t *testing.T) {
 	req := must(http.NewRequest(
 		http.MethodPut,
 		approve_url,
-		makeRequestBodyF(`{"user_id": "%s"}`, userId),
+		makeRequestBodyF(`{"user_id": "%s", "destination": "trusted"}`, userId),
 	))
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	// Second pass, with same project-id, file-id, user-id
+	// Second pass: same project-id, file-id, user-id, destination
 	req = must(http.NewRequest(
 		http.MethodPut,
 		approve_url,
-		makeRequestBodyF(`{"user_id": "%s"}`, userId),
+		makeRequestBodyF(`{"user_id": "%s", "destination": "trusted"}`, userId),
+	))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
+	res = must(client.Do(req))
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+
+	// Third pass: same project-id, file-id, user-id but different destination
+	req = must(http.NewRequest(
+		http.MethodPut,
+		approve_url,
+		makeRequestBodyF(`{"user_id": "%s", "destination": "world"}`, userId),
 	))
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
