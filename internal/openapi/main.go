@@ -9,10 +9,13 @@ func MakeFileMetadata(metadata types.FileMetadata, approvals types.FileApprovals
 		FileName:  metadata.Name,
 		Id:        string(metadata.Id),
 		Size:      int(metadata.Size),
-		Approvals: []string{},
+		Approvals: []Approval{},
 	}
 	for _, approval := range approvals {
-		fileMetadata.Approvals = append(fileMetadata.Approvals, string(approval))
+		fileMetadata.Approvals = append(fileMetadata.Approvals, Approval{
+			UserId:      string(approval.UserId),
+			Destination: string(approval.Destination),
+		})
 	}
 	return fileMetadata
 }

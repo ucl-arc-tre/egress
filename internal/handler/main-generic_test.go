@@ -21,7 +21,7 @@ func TestGetFilesGeneric(t *testing.T) {
 		name          string
 		body          string
 		genericClient generic.MockClient
-		approvals     map[types.FileId]types.UserId
+		approvals     map[types.FileId]types.Approval
 
 		expectedStatusCode int
 		expectedBody       string
@@ -57,12 +57,12 @@ func TestGetFilesGeneric(t *testing.T) {
 					},
 				},
 			},
-			approvals: map[types.FileId]types.UserId{
-				"abc100": "user1",
-				"abc200": "user1",
+			approvals: map[types.FileId]types.Approval{
+				"abc100": {UserId: "user1", Destination: "trusted"},
+				"abc200": {UserId: "user1", Destination: "trusted"},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedBody:       `[{"approvals":["user1"],"file_name":"file1","id":"abc100","size":11}]`,
+			expectedBody:       `[{"approvals":[{"destination":"trusted","user_id":"user1"}],"file_name":"file1","id":"abc100","size":11}]`,
 		},
 	}
 
@@ -72,8 +72,8 @@ func TestGetFilesGeneric(t *testing.T) {
 				storage: generic.NewWithMock(&tc.genericClient),
 				db:      inmemory.New(),
 			}
-			for fileId, userId := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)
+			for fileId, approval := range tc.approvals {
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -104,7 +104,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 		body          string
 		fileId        string
 		genericClient generic.MockClient
-		approvals     map[types.FileId]types.UserId
+		approvals     map[types.FileId]types.Approval
 
 		expectedStatusCode int
 		expectedBody       string
@@ -116,7 +116,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 		},
 		{
 			name:   "list error on get",
-			body:   `{"files_location":"http://storage.local","max_file_size":100,"required_approvals":0}`,
+			body:   `{"files_location":"http://storage.local","max_file_size":100,"destination":"trusted","required_approvals":0}`,
 			fileId: fileId1,
 			genericClient: generic.MockClient{
 				ForceListErr: errors.New("server error"),
@@ -125,16 +125,32 @@ func TestGetFileIdGeneric(t *testing.T) {
 		},
 		{
 			name: "no approvals",
-			body: `{"files_location":"http://storage.local","max_file_size":100,"required_approvals":1}`,
+			body: `{"files_location":"http://storage.local","max_file_size":100,"destination":"trusted","required_approvals":1}`,
 			genericClient: generic.MockClient{
 				Files: []generic.MockFile{genericFile1},
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Required 1 approvals but only had 0"}`,
+			expectedBody:       `{"message":"Required 1 approvals for destination trusted but only had 0"}`,
+		},
+		{
+			name:   "bad download destination",
+			body:   `{"files_location":"http://storage.local","max_file_size":100,"destination":"trusted","required_approvals":1}`,
+			fileId: fileId1,
+			genericClient: generic.MockClient{
+				Files: []generic.MockFile{genericFile1},
+			},
+			approvals: map[types.FileId]types.Approval{
+				types.FileId(fileId1): {
+					UserId:      "user1",
+					Destination: "world",
+				},
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Required 1 approvals for destination trusted but only had 0"}`,
 		},
 		{
 			name:   "above max body size",
-			body:   `{"files_location":"http://storage.local","max_file_size":1,"required_approvals":0}`,
+			body:   `{"files_location":"http://storage.local","max_file_size":1,"destination":"trusted","required_approvals":0}`,
 			fileId: fileId1,
 			genericClient: generic.MockClient{
 				Files: []generic.MockFile{genericFile1},
@@ -144,13 +160,16 @@ func TestGetFileIdGeneric(t *testing.T) {
 		},
 		{
 			name:   "ok",
-			body:   `{"files_location":"http://storage.local","max_file_size":100,"required_approvals":1}`,
+			body:   `{"files_location":"http://storage.local","max_file_size":100,"destination":"trusted","required_approvals":1}`,
 			fileId: fileId1,
 			genericClient: generic.MockClient{
 				Files: []generic.MockFile{genericFile1},
 			},
-			approvals: map[types.FileId]types.UserId{
-				types.FileId(fileId1): "user1",
+			approvals: map[types.FileId]types.Approval{
+				types.FileId(fileId1): {
+					UserId:      "user1",
+					Destination: "trusted",
+				},
 			},
 			expectedStatusCode: http.StatusOK,
 			expectedBody:       `hello world`,
@@ -163,8 +182,8 @@ func TestGetFileIdGeneric(t *testing.T) {
 				storage: generic.NewWithMock(&tc.genericClient),
 				db:      inmemory.New(),
 			}
-			for fileId, userId := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)
+			for fileId, approval := range tc.approvals {
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
