@@ -15,7 +15,12 @@ type DB struct {
 	state map[types.ProjectId]types.ProjectApprovals
 }
 
-func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId types.UserId) error {
+func (db *DB) ApproveFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -27,7 +32,11 @@ func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId
 		db.state[projectId][fileId] = types.FileApprovals{}
 	}
 
-	db.state[projectId][fileId] = append(db.state[projectId][fileId], userId)
+	approval := types.Approval{
+		UserId:      userId,
+		Destination: destination,
+	}
+	db.state[projectId][fileId] = append(db.state[projectId][fileId], approval)
 	return nil
 }
 
