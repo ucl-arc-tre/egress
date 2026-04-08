@@ -24,7 +24,7 @@ func TestGetFiles(t *testing.T) {
 		name      string
 		body      string
 		s3client  s3.MockClient
-		approvals map[types.FileId]types.UserId
+		approvals map[types.FileId]types.Approval
 
 		expectedStatusCode int
 		expectedBody       string
@@ -67,12 +67,12 @@ func TestGetFiles(t *testing.T) {
 					},
 				},
 			},
-			approvals: map[types.FileId]types.UserId{
-				"etag1": "user1",
-				"etag2": "user1",
+			approvals: map[types.FileId]types.Approval{
+				"etag1": {UserId: "user1", Destination: "trusted"},
+				"etag2": {UserId: "user1", Destination: "trusted"},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedBody:       `[{"approvals":["user1"],"file_name":"object1","id":"etag1","size":11}]`,
+			expectedBody:       `[{"approvals":[{"destination":"trusted","user_id":"user1"}],"file_name":"object1","id":"etag1","size":11}]`,
 		},
 	}
 
@@ -82,8 +82,12 @@ func TestGetFiles(t *testing.T) {
 				storage: s3.NewMock(tc.s3client),
 				db:      inmemory.New(),
 			}
-			for fileId, userId := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)
+			for fileId, approval := range tc.approvals {
+				err := handler.db.ApproveFile(
+					types.ProjectId(projectId),
+					fileId,
+					approval.UserId,
+					approval.Destination)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -118,7 +122,7 @@ func TestGetFileId(t *testing.T) {
 		body      string
 		fileId    string
 		s3client  s3.MockClient
-		approvals map[types.FileId]types.UserId
+		approvals map[types.FileId]types.Approval
 
 		expectedStatusCode int
 		expectedBody       string
@@ -130,23 +134,40 @@ func TestGetFileId(t *testing.T) {
 		},
 		{
 			name:               "bad location",
-			body:               `{"files_location":"s:/bucket1","max_file_size":100,"required_approvals":0}`,
+			body:               `{"files_location":"s:/bucket1","max_file_size":100,"destination":"trusted","required_approvals":0}`,
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
 			name: "no approvals",
-			body: `{"files_location":"s3://bucket1","max_file_size":100,"required_approvals":1}`,
+			body: `{"files_location":"s3://bucket1","max_file_size":100,"destination":"trusted","required_approvals":1}`,
 			s3client: s3.MockClient{
 				Buckets: map[s3.MockBucketName]s3.MockBucket{
 					"bucket1": bucket1,
 				},
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Required 1 approvals but only had 0"}`,
+			expectedBody:       `{"message":"Required 1 approvals for destination trusted but only had 0"}`,
+		},
+		{
+			name:   "bad download destination",
+			body:   `{"files_location":"s3://bucket1","max_file_size":100,"destination":"trusted","required_approvals":1}`,
+			fileId: fileId1,
+			s3client: s3.MockClient{
+				Buckets: map[s3.MockBucketName]s3.MockBucket{
+					"bucket1": bucket1,
+				},
+			},
+			approvals: map[types.FileId]types.Approval{
+				types.FileId(fileId1): {
+					UserId:      "user1",
+					Destination: "world"},
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Required 1 approvals for destination trusted but only had 0"}`,
 		},
 		{
 			name:   "above max body size",
-			body:   `{"files_location":"s3://bucket1","max_file_size":1,"required_approvals":0}`,
+			body:   `{"files_location":"s3://bucket1","max_file_size":1,"destination":"trusted","required_approvals":0}`,
 			fileId: fileId1,
 			s3client: s3.MockClient{
 				Buckets: map[s3.MockBucketName]s3.MockBucket{
@@ -158,15 +179,18 @@ func TestGetFileId(t *testing.T) {
 		},
 		{
 			name:   "ok",
-			body:   `{"files_location":"s3://bucket1","max_file_size":100,"required_approvals":1}`,
+			body:   `{"files_location":"s3://bucket1","max_file_size":100,"destination":"trusted","required_approvals":1}`,
 			fileId: fileId1,
 			s3client: s3.MockClient{
 				Buckets: map[s3.MockBucketName]s3.MockBucket{
 					"bucket1": bucket1,
 				},
 			},
-			approvals: map[types.FileId]types.UserId{
-				types.FileId(fileId1): "user1",
+			approvals: map[types.FileId]types.Approval{
+				types.FileId(fileId1): {
+					UserId:      "user1",
+					Destination: "trusted",
+				},
 			},
 			expectedStatusCode: http.StatusOK,
 			expectedBody:       `hello world`,
@@ -179,8 +203,8 @@ func TestGetFileId(t *testing.T) {
 				storage: s3.NewMock(tc.s3client),
 				db:      inmemory.New(),
 			}
-			for fileId, userId := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, userId)
+			for fileId, approval := range tc.approvals {
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -217,7 +241,7 @@ func TestApproveFileId(t *testing.T) {
 		},
 		{
 			name:               "ok",
-			body:               `{"user_id":"user1"}`,
+			body:               `{"user_id":"user1","destination":"trusted"}`,
 			expectedStatusCode: http.StatusNoContent,
 			expectedBody:       ``,
 			expectedApprovals:  1,
@@ -242,7 +266,12 @@ func TestApproveFileId(t *testing.T) {
 
 			approvals, err := handler.db.FileApprovals(projectId)
 			assert.NoError(t, err)
-			assert.Len(t, approvals[types.FileId(tc.fileId)], tc.expectedApprovals)
+			fileApprovals := approvals[types.FileId(tc.fileId)]
+			assert.Len(t, fileApprovals, tc.expectedApprovals)
+			if tc.expectedApprovals > 0 {
+				assert.Equal(t, types.UserId("user1"), fileApprovals[0].UserId)
+				assert.Equal(t, types.Destination("trusted"), fileApprovals[0].Destination)
+			}
 		})
 	}
 }

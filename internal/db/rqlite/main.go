@@ -27,12 +27,17 @@ func New(baseURL, username, password string) (*DB, error) {
 	return db, nil
 }
 
-func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId types.UserId) error {
-	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id) VALUES (?, ?, ?)`
+func (db *DB) ApproveFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+) error {
+	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id, destination) VALUES (?, ?, ?, ?)`
 
 	stmt := rq.ParameterizedStatement{
 		Query:     sqlApproveFile,
-		Arguments: []any{projectId, fileId, userId},
+		Arguments: []any{projectId, fileId, userId, destination},
 	}
 
 	wr, operr := db.conn.WriteOneParameterized(stmt)
@@ -42,7 +47,7 @@ func (db *DB) ApproveFile(projectId types.ProjectId, fileId types.FileId, userId
 }
 
 func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, error) {
-	sqlFileApprovals := `SELECT file_id, user_id FROM file_approvals WHERE project_id = ? ORDER BY file_id`
+	sqlFileApprovals := `SELECT file_id, user_id, destination FROM file_approvals WHERE project_id = ? ORDER BY file_id`
 
 	stmt := rq.ParameterizedStatement{
 		Query:     sqlFileApprovals,
@@ -58,19 +63,22 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 	// Make ProjectApprovals map from query results
 	approvals := make(types.ProjectApprovals)
 	for qr.Next() {
-		var fileIdStr, userIdStr string
-		if err := qr.Scan(&fileIdStr, &userIdStr); err != nil {
+		var fileIdStr, userIdStr, destinationStr string
+		if err := qr.Scan(&fileIdStr, &userIdStr, &destinationStr); err != nil {
 			return nil, fmt.Errorf("[rqlite] failed to scan row: %w", err)
 		}
 
 		fileId := types.FileId(fileIdStr)
-		userId := types.UserId(userIdStr)
+		approval := types.Approval{
+			UserId:      types.UserId(userIdStr),
+			Destination: types.Destination(destinationStr),
+		}
 
-		// Append userId to file's approval list
+		// Append approval to file's approval list
 		if _, exists := approvals[fileId]; !exists {
 			approvals[fileId] = types.FileApprovals{}
 		}
-		approvals[fileId] = append(approvals[fileId], userId)
+		approvals[fileId] = append(approvals[fileId], approval)
 	}
 	return approvals, nil
 }

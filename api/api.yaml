@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  version: 0.5.0
+  version: 0.6.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
@@ -148,26 +148,47 @@ components:
           minimum: 0
         approvals:
           type: array
-          description: User ids of granted approvals
+          description: List of egress approvals
           items:
-            type: string
+            $ref: '#/components/schemas/Approval'
+
+    Approval:
+      type: object
+      required:
+        - user_id
+        - destination
+      properties:
+        user_id:
+          type: string
+          description: User id of approver
+        destination:
+          type: string
+          description: Approved egress destination
 
     ApproveFileRequest:
       type: object
       required:
         - user_id
+        - destination
       properties:
         user_id:
           type: string
           description: User id of approver
+        destination:
+          type: string
+          description: Destination to which the file can be egressed
 
     DownloadFileRequest:
       type: object
       required:
+        - destination
         - required_approvals
         - files_location
         - max_file_size
       properties:
+        destination:
+          type: string
+          description: Destination to which the file is egressed
         required_approvals:
           type: integer
           description: Min number of approvals required to egress

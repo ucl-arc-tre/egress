@@ -88,9 +88,11 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		log.Debug().Any("fileId", fileId).Msg("File had no approvals")
 		fileApprovals = types.FileApprovals{}
 	}
-	if numApprovals := len(fileApprovals); numApprovals < data.RequiredApprovals {
+	destApprovals := fileApprovals.ForDestination(types.Destination(data.Destination))
+	if numApprovals := len(destApprovals); numApprovals < data.RequiredApprovals {
 		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
-			Message: fmt.Sprintf("Required %d approvals but only had %d", data.RequiredApprovals, numApprovals),
+			Message: fmt.Sprintf("Required %d approvals for destination %s but only had %d",
+				data.RequiredApprovals, string(data.Destination), numApprovals),
 		})
 		return
 	}
@@ -140,6 +142,7 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		types.ProjectId(projectId),
 		types.FileId(fileId),
 		types.UserId(data.UserId),
+		types.Destination(data.Destination),
 	)
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to approve file")
