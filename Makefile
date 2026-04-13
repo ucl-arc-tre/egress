@@ -46,6 +46,7 @@ test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-t
 	echo -e "\033[33mRunning e2e tests with generic storage provider...\033[0m"
 	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-generic.yaml egress ./chart
 	STORAGE_PROVIDER="generic" go test ./e2e/... -count=1
+	$(MAKE) dev-destroy
 
 dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
