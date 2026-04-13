@@ -45,7 +45,7 @@ storage:
     tls:
       # Overrides the Certificate issuerRef.name (cert-manager ClusterIssuer).
       # Defaults to ca-issuer when unset.
-      issuerName: null
+      issuerName: "ca-issuer"
       certManager:
         duration: null
         renewBefore: null
