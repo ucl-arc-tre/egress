@@ -158,9 +158,9 @@ func TestApprovalAndEgress(t *testing.T) {
 			projectId := "pTestApprovalAndEgress"
 			userId := "userTestApprovalAndEgress"
 
+			// Upload a file to storage with unique key
 			key := uuid.New()
 			fileContent := fmt.Sprintf("hello %s", key.String())
-
 			assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
 
 			client := newHTTPClient()
@@ -233,43 +233,84 @@ func TestApprovalAndEgress(t *testing.T) {
 }
 
 func TestApprovalIdempotency(t *testing.T) {
-	userId := uuid.New().String()
-	approve_url := fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, "p0004", "f0004")
+	projectId := "p0004"
+	userId := "user-" + uuid.New().String()
+	listUrl := fmt.Sprintf("%s/%s/files", baseApiUrl, projectId)
+
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
 
 	client := newHTTPClient()
 
-	// First pass
+	// List files - expecting file to have no approvals
 	req := must(http.NewRequest(
-		http.MethodPut,
-		approve_url,
-		makeRequestBodyF(`{"user_id": "%s", "destination": "trusted"}`, userId),
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
-	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
-	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	partialListFilesResponse := PartialListFilesResponse{}
+	assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
+	assertNoError(res.Body.Close())
+	assert.True(t, len(partialListFilesResponse) > 0)
+	partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
+	assert.True(t, exists)
+	assert.Len(t, partialListFileResponse.Approvals, 0)
+
+	// Retrieve the file ID from the list response
+	fileId := partialListFileResponse.Id
+	approveUrl := fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId)
+
+	approveForDestination := func(destination string) {
+		req := must(http.NewRequest(
+			http.MethodPut,
+			approveUrl,
+			makeRequestBodyF(`{"user_id": "%s", "destination": "%s"}`, userId, destination),
+		))
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth(username, password)
+		res := must(client.Do(req))
+		assert.Equal(t, http.StatusNoContent, res.StatusCode)
+	}
+
+	// Assert approval details after each approve pass
+	assertTrustedApproval := func() {
+		t.Helper()
+		req := must(http.NewRequest(
+			http.MethodGet,
+			listUrl,
+			makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
+		))
+		req.SetBasicAuth(username, password)
+		res := must(client.Do(req))
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		var files PartialListFilesResponse
+		assertNoError(json.NewDecoder(res.Body).Decode(&files))
+		assertNoError(res.Body.Close())
+		approvedFile, exists := files.FileById(fileId)
+
+		assert.True(t, exists)
+		assert.Len(t, approvedFile.Approvals, 1)
+		assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
+		assert.Equal(t, "trusted", approvedFile.Approvals[0].Destination)
+	}
+
+	// First pass
+	approveForDestination("trusted")
+	assertTrustedApproval()
 
 	// Second pass: same project-id, file-id, user-id, destination
-	req = must(http.NewRequest(
-		http.MethodPut,
-		approve_url,
-		makeRequestBodyF(`{"user_id": "%s", "destination": "trusted"}`, userId),
-	))
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
-	res = must(client.Do(req))
-	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+	approveForDestination("trusted")
+	assertTrustedApproval()
 
 	// Third pass: same project-id, file-id, user-id but different destination
-	req = must(http.NewRequest(
-		http.MethodPut,
-		approve_url,
-		makeRequestBodyF(`{"user_id": "%s", "destination": "world"}`, userId),
-	))
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
-	res = must(client.Do(req))
-	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+	approveForDestination("world")
+	assertTrustedApproval()
 }
 
 func TestAuthFailureWithIncorrectUsername(t *testing.T) {
