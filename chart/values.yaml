@@ -43,6 +43,7 @@ storage:
     # mTLS configuration
     # Requires cert-manager to be already available in the cluster
     tls:
+      issuerName: null
       certManager:
         duration: null
         renewBefore: null
