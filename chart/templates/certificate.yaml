@@ -25,6 +25,6 @@ spec:
     - {{ $name }}.{{ $namespace }}.svc
     - {{ $name }}.{{ $namespace }}.svc.cluster.local
   issuerRef:
-    name: ca-issuer
+    name: {{ required "storage.generic.tls.issuerName is required" .Values.storage.generic.tls.issuerName }}
     kind: ClusterIssuer
 {{- end }}
