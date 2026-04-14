@@ -44,7 +44,7 @@ storage:
     # Requires cert-manager to be already available in the cluster
     tls:
       # Overrides the Certificate issuerRef.name (cert-manager ClusterIssuer).
-      # Defaults to ca-issuer when unset.
+      # Defaults to "ca-issuer"
       issuerName: "ca-issuer"
       certManager:
         duration: null
