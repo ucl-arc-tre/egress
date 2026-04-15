@@ -32,6 +32,14 @@ func (db *DB) ApproveFile(
 		db.state[projectId][fileId] = types.FileApprovals{}
 	}
 
+	// Enforce uniqueness of {file_id, user_id, destination} within a project
+	// A duplicate call is treated as idempotent
+	for _, existing := range db.state[projectId][fileId] {
+		if existing.UserId == userId && existing.Destination == destination {
+			return nil
+		}
+	}
+
 	approval := types.Approval{
 		UserId:      userId,
 		Destination: destination,
