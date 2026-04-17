@@ -14,8 +14,23 @@ func (r PartialListFilesResponse) FileByFilename(filename string) (PartialListFi
 	return r[idx], true
 }
 
+func (r PartialListFilesResponse) FileById(id string) (PartialListFileResponse, bool) {
+	idx := slices.IndexFunc(r, func(o PartialListFileResponse) bool {
+		return o.Id == id
+	})
+	if idx == -1 {
+		return PartialListFileResponse{}, false
+	}
+	return r[idx], true
+}
+
 type PartialListFileResponse struct {
-	Id        string   `json:"id"`
-	FileName  string   `json:"file_name"`
-	Approvals []string `json:"approvals"`
+	Id        string     `json:"id"`
+	FileName  string     `json:"file_name"`
+	Approvals []Approval `json:"approvals"`
+}
+
+type Approval struct {
+	UserId      string `json:"user_id"`
+	Destination string `json:"destination"`
 }

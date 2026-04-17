@@ -49,7 +49,7 @@ sequenceDiagram
     checker->>tre: View file
     checker->>frontend: Approve file
     frontend->>backend: Approve file<br/>{file-id}
-    backend->>egress: approve-file<br/>{HTTP-creds, project-id, file-id, user-id}
+    backend->>egress: approve-file<br/>{HTTP-creds, project-id, file-id, user-id, destination}
     egress-->>backend: Success
     backend-->>frontend: Approval confirmed
 
@@ -61,7 +61,7 @@ sequenceDiagram
 
     researcher->>frontend: Download file
     frontend->>backend: Download file<br/>{file-id}
-    backend->>egress: Download file<br/>{HTTP-creds, project-id, file-id,<br/>files-location, required-approvals, max-file-size}
+    backend->>egress: Download file<br/>{HTTP-creds, project-id, file-id,<br/>files-location, destination,<br/>required-approvals, max-file-size}
     egress->>S3: Get file
     S3-->>egress: File stream
     egress-->>backend: Stream file
