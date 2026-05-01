@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,13 @@ import (
 
 const (
 	BasicAuthScopes = "basicAuth.Scopes"
+)
+
+// Defines values for EventAction.
+const (
+	Approve  EventAction = "Approve"
+	Download EventAction = "Download"
+	Reject   EventAction = "Reject"
 )
 
 // Approval defines model for Approval.
@@ -33,6 +41,9 @@ type Approval struct {
 
 // ApproveFileRequest defines model for ApproveFileRequest.
 type ApproveFileRequest struct {
+	// Comment Comment accompanying approval (optional)
+	Comment *string `json:"comment,omitempty"`
+
 	// Destination Destination to which the file can be egressed
 	Destination string `json:"destination"`
 
@@ -42,6 +53,9 @@ type ApproveFileRequest struct {
 
 // DownloadFileRequest defines model for DownloadFileRequest.
 type DownloadFileRequest struct {
+	// Comment Comment accompanying download request (optional)
+	Comment *string `json:"comment,omitempty"`
+
 	// Destination Destination to which the file is egressed
 	Destination string `json:"destination"`
 
@@ -60,6 +74,33 @@ type ErrorResponse struct {
 	// Message Descriptive error message
 	Message string `json:"message"`
 }
+
+// Event defines model for Event.
+type Event struct {
+	// Action Action associated with event
+	Action *EventAction `json:"action"`
+
+	// Comment Comment associated with approval, rejection or download
+	Comment *string `json:"comment"`
+
+	// Datetime Date and time of event; ISO 8601, millisecond resolution
+	Datetime time.Time `json:"datetime"`
+
+	// Destination Egress/download destination
+	Destination *string `json:"destination"`
+
+	// FileId Unique file identifier
+	FileId string `json:"file_id"`
+
+	// UserId User identifier
+	UserId string `json:"user_id"`
+}
+
+// EventAction Action associated with event
+type EventAction string
+
+// EventListResponse defines model for EventListResponse.
+type EventListResponse = []Event
 
 // FileListResponse defines model for FileListResponse.
 type FileListResponse = []FileMetadata
@@ -83,6 +124,15 @@ type FileMetadata struct {
 type ListFilesRequest struct {
 	// FilesLocation Location (i.e. path) of files to list
 	FilesLocation string `json:"files_location"`
+}
+
+// RejectFileRequest defines model for RejectFileRequest.
+type RejectFileRequest struct {
+	// Comment Optional comment accompanying the rejection
+	Comment *string `json:"comment,omitempty"`
+
+	// UserId User id of rejecter
+	UserId string `json:"user_id"`
 }
 
 // FileIdParam defines model for FileIdParam.
@@ -112,8 +162,14 @@ type GetProjectIdFilesFileIdJSONRequestBody = DownloadFileRequest
 // PutProjectIdFilesFileIdApproveJSONRequestBody defines body for PutProjectIdFilesFileIdApprove for application/json ContentType.
 type PutProjectIdFilesFileIdApproveJSONRequestBody = ApproveFileRequest
 
+// PutProjectIdFilesFileIdRejectJSONRequestBody defines body for PutProjectIdFilesFileIdReject for application/json ContentType.
+type PutProjectIdFilesFileIdRejectJSONRequestBody = RejectFileRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List events
+	// (GET /{project-id}/events)
+	GetProjectIdEvents(c *gin.Context, projectId ProjectIdParam)
 	// List requested files
 	// (GET /{project-id}/files)
 	GetProjectIdFiles(c *gin.Context, projectId ProjectIdParam)
@@ -123,6 +179,9 @@ type ServerInterface interface {
 	// Approve file
 	// (PUT /{project-id}/files/{file-id}/approve)
 	PutProjectIdFilesFileIdApprove(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
+	// Reject file
+	// (PUT /{project-id}/files/{file-id}/reject)
+	PutProjectIdFilesFileIdReject(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -133,6 +192,32 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// GetProjectIdEvents operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectIdEvents(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BasicAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetProjectIdEvents(c, projectId)
+}
 
 // GetProjectIdFiles operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectIdFiles(c *gin.Context) {
@@ -230,6 +315,41 @@ func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdApprove(c *gin.Context
 	siw.Handler.PutProjectIdFilesFileIdApprove(c, projectId, fileId)
 }
 
+// PutProjectIdFilesFileIdReject operation middleware
+func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdReject(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "file-id" -------------
+	var fileId FileIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file-id", c.Param("file-id"), &fileId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter file-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BasicAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutProjectIdFilesFileIdReject(c, projectId, fileId)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -257,35 +377,42 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/:project-id/events", wrapper.GetProjectIdEvents)
 	router.GET(options.BaseURL+"/:project-id/files", wrapper.GetProjectIdFiles)
 	router.GET(options.BaseURL+"/:project-id/files/:file-id", wrapper.GetProjectIdFilesFileId)
 	router.PUT(options.BaseURL+"/:project-id/files/:file-id/approve", wrapper.PutProjectIdFilesFileIdApprove)
+	router.PUT(options.BaseURL+"/:project-id/files/:file-id/reject", wrapper.PutProjectIdFilesFileIdReject)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RYTU8jORP+K5bf97ArddKZHXYPmRMMzC4SM0J8iANCyGlXEo+67cZ2BzKo//uqbPdH",
-	"0mbCCAatdm90XB+Pq54qV/FIM1WUSoK0hk4fack0K8CCdl+fRA7H/BR/w08OJtOitEJJOqWXUtxVQOYi",
-	"ByI4SCvmAjRNqMDTktklTahkBdApRaGR4DShGu4qoYHTqdUVJNRkSygYWrfrEkWN1UIuaF0n9FSrr5DZ",
-	"XQhKL7YTRJD7URw1CptSSQMuKAeMn8FdBcbiV6akBen+ZGWZi4whuPSrQYSPPbP/1zCnU/q/tAt46k9N",
-	"eqS10mfBiXe5edMDxon2Tj8QIVcsF5z0clUn9Fha0JLl56BXoJ3Ft8N3KeGhhMwCJyLgIMYBIeCQ1An9",
-	"ouwnVUn+dqiQvkQqS+bOb53QS8kqu1RafAP+ltHpvH4g+DcS1fsiLRETugTGQ+VdXV2N9jtB2EQzoCj6",
-	"DHDwfL8stVqx3FW0ViVoKzx5ORgrJPPAtuvJqwEnsNBgDOkLJ9tOE1oZ0LeCR+rSgCaCEzUnzJvUQ/26",
-	"X4PXrbFkA+JNq6ZmWLvoNqDE5Pbq8AeuedgdEqvI/VJkS2KXoZVlTJIZhBC4tPxTLn6o7mWuGP9ZNxfm",
-	"u7dGGXObq+wJ4yfhhPwixjAm2Ht/xUg421YF2zHLBXu4RalbI77B0PBn9iCKqiAsz9U9cG8QRYmQZLa2",
-	"gEYLIVGITietA+xEC3C9pwn4LQuVYSJuhCSyKmagu/yx3LQFunGH1t27obutBG9WUQTJILTbEYmRYbPp",
-	"DGhQgDFsAVEK+K8V+NZMGtGEwgMryhz9HIcnJrzb3VOzk86NtRhmJO6JMLYPW1gozK4Oi4qfwTLOLEND",
-	"wTLTmq0bw+35IBbfyTmiwWyHhtfPybOAtY02Asrlz48e226/sAKa0ogVRLS3PDVuDbTjVXSOBdOU4zML",
-	"Zyu33Y0cxOAp6QU4lnWMMSbIPNmzXtJZDJZlLozdycwtL0OoGDrIKi3s+hzz68HNmBEZPsVDXH9dXJyS",
-	"AzzfetRpeI3RutPvwC2tLf2MIORcRdL88YTsn30kF2dH5Mizcv/0mCY0FxmEmgnz7MH54ej96GPOKoNZ",
-	"qHQe7JtpmqoSpFGVzmCs9CIN2unM8NH7UeZ1kLTCuoKvsnzEdDayGkZtk1uBNh7VZPzHeILyaJaVgk7p",
-	"+/FkPKGJm7FdoNLHbsCuUxdt/HkBLuOYbxebY06n9E+w7XDvuOEMdavHdbzsOpF0azeob3yywdgDxdev",
-	"NtsNyFtv0gqXh+0F4bfJ5NX8D1pmZLw8A1tpaZoFAbirh7ZAMG17HlLMUws97S02TuXdbpWNebpO6O/P",
-	"8RPbVFzxVUXB9Lppy911wjXqJMax9DE8UvXz2eb32hdzLtmp0V+gfxZFY2Phi1mqMgt2ZKwGv3h3UOZK",
-	"F8xiYxMSs5XEFubIHhYcEe3YCpyYKsvAmHmV5+u35OjeZG+3Urusvh6pmzw1q4Hn9W5ap0HevZtVhN6n",
-	"VZTeYU/6l7A8svU9i+R7wyfW0bHPvjYj/wUahkA25OsNPY4cvXHn+gaT6f+N45njR4x0NaH1Tf13AAAA",
-	"///4jaXfOxQAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
