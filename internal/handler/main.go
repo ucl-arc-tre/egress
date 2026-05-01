@@ -34,6 +34,12 @@ func New() *Handler {
 	return &Handler{db: db, storage: storage}
 }
 
+func (h *Handler) GetProjectIdEvents(c *gin.Context, projectId openapi.ProjectIdParam) {
+}
+
+func (h *Handler) PutProjectIdFilesFileIdReject(c *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
+}
+
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
 	data := openapi.ListFilesRequest{}
 	if err := ctx.BindJSON(&data); err != nil {

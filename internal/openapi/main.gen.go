@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
@@ -22,8 +23,32 @@ const (
 	BasicAuthScopes basicAuthContextKey = "basicAuth.Scopes"
 )
 
+// Defines values for EventAction.
+const (
+	EventActionApproval  EventAction = "Approval"
+	EventActionDownload  EventAction = "Download"
+	EventActionRejection EventAction = "Rejection"
+)
+
+// Valid indicates whether the value is a known member of the EventAction enum.
+func (e EventAction) Valid() bool {
+	switch e {
+	case EventActionApproval:
+		return true
+	case EventActionDownload:
+		return true
+	case EventActionRejection:
+		return true
+	default:
+		return false
+	}
+}
+
 // Approval defines model for Approval.
 type Approval struct {
+	// Comment Comment associated with approval
+	Comment string `json:"comment"`
+
 	// Destination Approved egress destination
 	Destination string `json:"destination"`
 
@@ -33,6 +58,9 @@ type Approval struct {
 
 // ApproveFileRequest defines model for ApproveFileRequest.
 type ApproveFileRequest struct {
+	// Comment Comment accompanying approval (optional)
+	Comment *string `json:"comment,omitempty"`
+
 	// Destination Destination to which the file can be egressed
 	Destination string `json:"destination"`
 
@@ -42,6 +70,9 @@ type ApproveFileRequest struct {
 
 // DownloadFileRequest defines model for DownloadFileRequest.
 type DownloadFileRequest struct {
+	// Comment Comment accompanying download request (optional)
+	Comment *string `json:"comment,omitempty"`
+
 	// Destination Destination to which the file is egressed
 	Destination string `json:"destination"`
 
@@ -53,6 +84,9 @@ type DownloadFileRequest struct {
 
 	// RequiredApprovals Min number of approvals required to egress
 	RequiredApprovals int `json:"required_approvals"`
+
+	// UserId User id of downloader (optional)
+	UserId *string `json:"user_id,omitempty"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -60,6 +94,33 @@ type ErrorResponse struct {
 	// Message Descriptive error message
 	Message string `json:"message"`
 }
+
+// Event defines model for Event.
+type Event struct {
+	// Action Action associated with event
+	Action *EventAction `json:"action,omitempty"`
+
+	// Comment Comment associated with approval, rejection or download
+	Comment *string `json:"comment,omitempty"`
+
+	// Datetime Date and time of event; ISO 8601, millisecond resolution
+	Datetime time.Time `json:"datetime"`
+
+	// Destination Egress/download destination
+	Destination *string `json:"destination,omitempty"`
+
+	// FileId Unique file identifier
+	FileId string `json:"file_id"`
+
+	// UserId User identifier
+	UserId string `json:"user_id"`
+}
+
+// EventAction Action associated with event
+type EventAction string
+
+// EventListResponse defines model for EventListResponse.
+type EventListResponse = []Event
 
 // FileListResponse defines model for FileListResponse.
 type FileListResponse = []FileMetadata
@@ -83,6 +144,18 @@ type FileMetadata struct {
 type ListFilesRequest struct {
 	// FilesLocation Location (i.e. path) of files to list
 	FilesLocation string `json:"files_location"`
+}
+
+// RejectFileRequest defines model for RejectFileRequest.
+type RejectFileRequest struct {
+	// Comment Comment accompanying rejection (optional)
+	Comment *string `json:"comment,omitempty"`
+
+	// Destination Destination to which egressing is denied
+	Destination string `json:"destination"`
+
+	// UserId User id of rejecter
+	UserId string `json:"user_id"`
 }
 
 // FileIdParam defines model for FileIdParam.
@@ -115,8 +188,14 @@ type GetProjectIdFilesFileIdJSONRequestBody = DownloadFileRequest
 // PutProjectIdFilesFileIdApproveJSONRequestBody defines body for PutProjectIdFilesFileIdApprove for application/json ContentType.
 type PutProjectIdFilesFileIdApproveJSONRequestBody = ApproveFileRequest
 
+// PutProjectIdFilesFileIdRejectJSONRequestBody defines body for PutProjectIdFilesFileIdReject for application/json ContentType.
+type PutProjectIdFilesFileIdRejectJSONRequestBody = RejectFileRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List events
+	// (GET /{project-id}/events)
+	GetProjectIdEvents(c *gin.Context, projectId ProjectIdParam)
 	// List requested files
 	// (GET /{project-id}/files)
 	GetProjectIdFiles(c *gin.Context, projectId ProjectIdParam)
@@ -126,6 +205,9 @@ type ServerInterface interface {
 	// Approve file
 	// (PUT /{project-id}/files/{file-id}/approve)
 	PutProjectIdFilesFileIdApprove(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
+	// Reject file
+	// (PUT /{project-id}/files/{file-id}/reject)
+	PutProjectIdFilesFileIdReject(c *gin.Context, projectId ProjectIdParam, fileId FileIdParam)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -136,6 +218,33 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// GetProjectIdEvents operation middleware
+func (siw *ServerInterfaceWrapper) GetProjectIdEvents(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BasicAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetProjectIdEvents(c, projectId)
+}
 
 // GetProjectIdFiles operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectIdFiles(c *gin.Context) {
@@ -236,6 +345,42 @@ func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdApprove(c *gin.Context
 	siw.Handler.PutProjectIdFilesFileIdApprove(c, projectId, fileId)
 }
 
+// PutProjectIdFilesFileIdReject operation middleware
+func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdReject(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "project-id" -------------
+	var projectId ProjectIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "project-id", c.Param("project-id"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter project-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "file-id" -------------
+	var fileId FileIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "file-id", c.Param("file-id"), &fileId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter file-id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BasicAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutProjectIdFilesFileIdReject(c, projectId, fileId)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -263,9 +408,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/:project-id/events", wrapper.GetProjectIdEvents)
 	router.GET(options.BaseURL+"/:project-id/files", wrapper.GetProjectIdFiles)
 	router.GET(options.BaseURL+"/:project-id/files/:file-id", wrapper.GetProjectIdFilesFileId)
 	router.PUT(options.BaseURL+"/:project-id/files/:file-id/approve", wrapper.PutProjectIdFilesFileIdApprove)
+	router.PUT(options.BaseURL+"/:project-id/files/:file-id/reject", wrapper.PutProjectIdFilesFileIdReject)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -273,26 +420,32 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
