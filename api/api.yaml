@@ -1,6 +1,6 @@
-openapi: "3.0.0"
+openapi: '3.0.0'
 info:
-  version: 0.6.0
+  version: 0.7.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
@@ -60,6 +60,30 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /{project-id}/files/{file-id}/reject:
+    put:
+      summary: Reject file
+      parameters:
+        - $ref: '#/components/parameters/ProjectIdParam'
+        - $ref: '#/components/parameters/FileIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectFileRequest'
+      responses:
+        '204':
+          description: File successfully rejected
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /{project-id}/files/{file-id}:
     get:
       summary: Download approved file
@@ -86,6 +110,23 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /{project-id}/events:
+    get:
+      summary: List events
+      parameters:
+        - $ref: '#/components/parameters/ProjectIdParam'
+      responses:
+        '200':
+          description: Returns list of chronologically ordered events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -157,6 +198,7 @@ components:
       required:
         - user_id
         - destination
+        - comment
       properties:
         user_id:
           type: string
@@ -164,6 +206,9 @@ components:
         destination:
           type: string
           description: Approved egress destination
+        comment:
+          type: string
+          description: Comment associated with approval
 
     ApproveFileRequest:
       type: object
@@ -177,6 +222,21 @@ components:
         destination:
           type: string
           description: Destination to which the file can be egressed
+        comment:
+          type: string
+          description: Comment accompanying approval (optional)
+
+    RejectFileRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: User id of rejecter
+        comment:
+          type: string
+          description: Comment accompanying rejection (optional)
 
     DownloadFileRequest:
       type: object
@@ -200,16 +260,59 @@ components:
           type: integer
           description: Maximum allowed file size in bytes
           minimum: 0
+        comment:
+          type: string
+          description: Comment accompanying download request (optional)
+
+    EventListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Event'
+
+    Event:
+      type: object
+      required:
+        - datetime
+        - file_id
+        - user_id
+      properties:
+        datetime:
+          type: string
+          format: date-time
+          description: Date and time of event; ISO 8601, millisecond resolution
+          example: '2026-04-32T16:48:08.512Z'
+        file_id:
+          type: string
+          description: Unique file identifier
+        user_id:
+          type: string
+          description: User identifier
+        action:
+          type: string
+          nullable: true
+          enum:
+            - Approval
+            - Rejection
+            - Download
+          description: Action associated with event
+        destination:
+          type: string
+          nullable: true
+          description: Egress/download destination
+        comment:
+          type: string
+          nullable: true
+          description: Comment associated with approval, rejection or download
 
     ErrorResponse:
       type: object
       required:
-         - message
+        - message
       properties:
         message:
           type: string
           description: Descriptive error message
-          example: "Invalid file-id parameter"
+          example: 'Invalid file-id parameter'
 
   responses:
     BadRequest:
