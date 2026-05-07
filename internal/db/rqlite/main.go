@@ -32,6 +32,7 @@ func (db *DB) ApproveFile(
 	fileId types.FileId,
 	userId types.UserId,
 	destination types.Destination,
+	comment string,
 ) error {
 	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id, destination) VALUES (?, ?, ?, ?)`
 
@@ -81,6 +82,30 @@ func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, 
 		approvals[fileId] = append(approvals[fileId], approval)
 	}
 	return approvals, nil
+}
+
+func (db *DB) RejectFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	return nil
+}
+
+func (db *DB) DownloadFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	return nil
+}
+
+func (db *DB) FileEvents(projectId types.ProjectId) (types.ProjectEvents, error) {
+	return nil, nil
 }
 
 func (db *DB) IsReady() bool {

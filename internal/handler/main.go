@@ -144,11 +144,16 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
+	comment := ""
+	if data.Comment != nil {
+		comment = *data.Comment
+	}
 	err := h.db.ApproveFile(
 		types.ProjectId(projectId),
 		types.FileId(fileId),
 		types.UserId(data.UserId),
 		types.Destination(data.Destination),
+		comment,
 	)
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to approve file")
