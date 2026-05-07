@@ -68,11 +68,11 @@ func TestGetFiles(t *testing.T) {
 				},
 			},
 			approvals: map[types.FileId]types.Approval{
-				"etag1": {UserId: "user1", Destination: "trusted"},
-				"etag2": {UserId: "user1", Destination: "trusted"},
+				"etag1": {UserId: "user1", Destination: "trusted", Comment: "ok"},
+				"etag2": {UserId: "user1", Destination: "trusted", Comment: "ok"},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedBody:       `[{"approvals":[{"destination":"trusted","user_id":"user1"}],"file_name":"object1","id":"etag1","size":11}]`,
+			expectedBody:       `[{"approvals":[{"comment":"ok","destination":"trusted","user_id":"user1"}],"file_name":"object1","id":"etag1","size":11}]`,
 		},
 	}
 
@@ -87,7 +87,8 @@ func TestGetFiles(t *testing.T) {
 					types.ProjectId(projectId),
 					fileId,
 					approval.UserId,
-					approval.Destination)
+					approval.Destination,
+					approval.Comment)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -204,7 +205,7 @@ func TestGetFileId(t *testing.T) {
 				db:      inmemory.New(),
 			}
 			for fileId, approval := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination, "")
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()

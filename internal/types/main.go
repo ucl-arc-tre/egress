@@ -12,11 +12,12 @@ type UserId string
 // Destination for which a file can be egressed
 type Destination string
 
-// An egress approval, recording the approving user
+// An egress file approval, recording the approving user
 // and the destination for which it is approved
 type Approval struct {
 	UserId      UserId
 	Destination Destination
+	Comment     string
 }
 
 // List of approvals granted for a file

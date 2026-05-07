@@ -58,11 +58,11 @@ func TestGetFilesGeneric(t *testing.T) {
 				},
 			},
 			approvals: map[types.FileId]types.Approval{
-				"abc100": {UserId: "user1", Destination: "trusted"},
-				"abc200": {UserId: "user1", Destination: "trusted"},
+				"abc100": {UserId: "user1", Destination: "trusted", Comment: "ok"},
+				"abc200": {UserId: "user1", Destination: "trusted", Comment: "ok"},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedBody:       `[{"approvals":[{"destination":"trusted","user_id":"user1"}],"file_name":"file1","id":"abc100","size":11}]`,
+			expectedBody:       `[{"approvals":[{"comment":"ok","destination":"trusted","user_id":"user1"}],"file_name":"file1","id":"abc100","size":11}]`,
 		},
 	}
 
@@ -73,7 +73,13 @@ func TestGetFilesGeneric(t *testing.T) {
 				db:      inmemory.New(),
 			}
 			for fileId, approval := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
+				err := handler.db.ApproveFile(
+					types.ProjectId(projectId),
+					fileId,
+					approval.UserId,
+					approval.Destination,
+					approval.Comment,
+				)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -183,7 +189,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 				db:      inmemory.New(),
 			}
 			for fileId, approval := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination, "")
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()

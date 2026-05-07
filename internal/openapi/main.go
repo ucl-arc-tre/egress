@@ -15,6 +15,7 @@ func MakeFileMetadata(metadata types.FileMetadata, approvals types.FileApprovals
 		fileMetadata.Approvals = append(fileMetadata.Approvals, Approval{
 			UserId:      string(approval.UserId),
 			Destination: string(approval.Destination),
+			Comment:     approval.Comment,
 		})
 	}
 	return fileMetadata

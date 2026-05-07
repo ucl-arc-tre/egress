@@ -32,6 +32,7 @@ func (db *DB) ApproveFile(
 	fileId types.FileId,
 	userId types.UserId,
 	destination types.Destination,
+	_ string,
 ) error {
 	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id, destination) VALUES (?, ?, ?, ?)`
 

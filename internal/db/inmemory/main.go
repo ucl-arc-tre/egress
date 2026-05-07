@@ -20,6 +20,7 @@ func (db *DB) ApproveFile(
 	fileId types.FileId,
 	userId types.UserId,
 	destination types.Destination,
+	comment string,
 ) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -43,6 +44,7 @@ func (db *DB) ApproveFile(
 	approval := types.Approval{
 		UserId:      userId,
 		Destination: destination,
+		Comment:     comment,
 	}
 	db.state[projectId][fileId] = append(db.state[projectId][fileId], approval)
 	return nil
