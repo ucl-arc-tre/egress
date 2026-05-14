@@ -1,13 +1,13 @@
 openapi: "3.0.0"
 info:
-  version: 0.6.0
+  version: 1.0.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
     name: BSD-3-Clause
     url: https://opensource.org/license/bsd-3-clause
 servers:
-  - url: /v0
+  - url: /v1
 security:
   - basicAuth: []
 paths:
