@@ -1,8 +1,5 @@
 # egress
 
-> [!WARNING]
-> This repository is under development and is _not_ production ready.
-
 UCL ARC TRE egress service is an internal API which provides a layer
 on top of a storage backend to track file approvals prior to download.
 
