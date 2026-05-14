@@ -99,7 +99,8 @@ dev-rustfs: ## Install rustfs as an S3 compatible object store
 	  --set gatewayApi.enabled=false \
 	  --set gatewayApi.gatewayClass="" \
 	  --set service.type=NodePort \
-	  --set mode.distributed.enabled=false
+	  --set mode.distributed.enabled=false \
+		--set secret.allowInsecureDefaults=true # required for dev
 
 dev-rqlite: ## Install rqlite for storing persistent state
 	helm repo add rqlite https://rqlite.github.io/helm-charts

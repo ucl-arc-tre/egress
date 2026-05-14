@@ -1,8 +1,5 @@
 # egress
 
-> [!WARNING]
-> This repository is under development and is _not_ production ready.
-
 UCL ARC TRE egress service is an internal API which provides a layer
 on top of a storage backend to track file approvals prior to download.
 
@@ -15,7 +12,7 @@ Install using [helm](https://helm.sh/)
 
 ```bash
 helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
-  --version 0.8.0
+  --version 1.0.0
 ```
 
 See [chart/values.yaml](./chart/values.yaml) for values.
