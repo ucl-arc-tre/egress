@@ -18,7 +18,7 @@ const (
 	tlsCertDir  = "/etc/egress/tls"
 	defaultPort = "8080"
 
-	BaseURL                = "/v0"
+	BaseURL                = "/v1"
 	ServerShutdownDuration = 30 * time.Second
 	ReadHeaderTimeout      = 1 * time.Second
 )
