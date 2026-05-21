@@ -1,0 +1,1 @@
+ALTER TABLE events ADD COLUMN action TEXT NOT NULL DEFAULT 'Approval';
