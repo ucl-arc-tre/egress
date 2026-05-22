@@ -57,6 +57,7 @@ dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 
 dev-destroy: ## Destroy the dev env
 	k3d cluster delete $(K3D_CLUSTER_NAME)
+	rm -rf $(DEV_STORAGE_ROOT)
 
 dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
