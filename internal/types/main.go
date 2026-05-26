@@ -53,7 +53,7 @@ type FileEvents []Event
 // Multiple approvals with the same {UserId, Destination} are de-duplicated
 // A rejection that comes after an approval cancels that approval
 // Events must be chronologically ordered when this method is called and
-// the oder is maintained in the filtered approval list
+// the order is maintained in the filtered approval list
 func (fe FileEvents) Approvals() FileApprovals {
 	type approvalKey struct {
 		userId      UserId

@@ -137,7 +137,7 @@ func (db *DB) insertEvent(
 	return unifyErrors("[rqlite] failed to insert event", operr, wr.Err)
 }
 
-// Parse datetime strings while accomodating for the non-subsecond
+// Parse datetime strings while accommodating for the non-subsecond
 // precision of the default values for 'created_at' column
 func parseDatetime(s string) (time.Time, error) {
 	if t, err := time.Parse(datetimeSubsecFormat, s); err == nil {
