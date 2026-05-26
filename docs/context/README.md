@@ -47,9 +47,9 @@ sequenceDiagram
     tre->>S3: Request file for viewing
     S3-->>tre: File content
     checker->>tre: View file
-    checker->>frontend: Approve file
-    frontend->>backend: Approve file<br/>{file-id}
-    backend->>egress: approve-file<br/>{HTTP-creds, project-id, file-id, user-id, destination}
+    checker->>frontend: Approve/Reject file
+    frontend->>backend: Approve/Reject file<br/>{file-id}
+    backend->>egress: approve-or-reject-file<br/>{HTTP-creds, project-id, file-id, user-id, destination, comment}
     egress-->>backend: Success
     backend-->>frontend: Approval confirmed
 
@@ -87,7 +87,7 @@ C4Context
     title Egress Service Context
 
     Person(researcher, "Researcher", "Works with sensitive data in TRE")
-    Person(checker, "Egress Checker", "Approves files for egress from TRE")
+    Person(checker, "Egress Checker", "Approves/Rejects files for egress from TRE")
 
     System_Boundary(tre_boundary, "Trusted Environment") {
         System(tre, "TRE", "Environment for working with sensitive data")
@@ -104,7 +104,7 @@ C4Context
     Rel(researcher, checker, "Requests egress approval")
     Rel(researcher, frontend, "Downloads approved files")
     Rel(checker, tre, "Reviews egress files")
-    Rel(checker, frontend, "Approves egress files")
+    Rel(checker, frontend, "Approves/Rejects egress files")
 
     Rel(frontend, backend, "Delegates user actions")
     Rel(backend, egress, "Invokes Egress service API")
