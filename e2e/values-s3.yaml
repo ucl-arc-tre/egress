@@ -4,6 +4,11 @@ image:
 
 replicaCount: 1
 
+resources:
+  requests:
+    cpu: 20m
+    memory: 96Mi
+
 service:
   type: NodePort
   nodePort: 30001
