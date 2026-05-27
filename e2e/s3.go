@@ -17,7 +17,7 @@ const (
 	devEndpoint = "http://localhost:8081"
 	bucketName  = "bucket1"
 	accessKey   = "s3user"
-	secretKey   = "s3user"
+	secretKey   = "s3user" // pragma: allowlist secret
 	region      = "us-east-1"
 )
 
