@@ -43,11 +43,11 @@ test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-t
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	# s3 storage
 	echo -e "\033[33mRunning e2e tests with s3 provider...\033[0m"
-	helm upgrade --install --create-namespace -n e2e --wait --timeout 8m -f e2e/values-s3.yaml egress ./chart
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-s3.yaml egress ./chart
 	STORAGE_PROVIDER="s3" go test ./e2e/... -count=1
 	# generic storage
 	echo -e "\033[33mRunning e2e tests with generic storage provider...\033[0m"
-	helm upgrade --install --create-namespace -n e2e --wait --timeout 8m -f e2e/values-generic.yaml egress ./chart
+	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-generic.yaml egress ./chart
 	STORAGE_PROVIDER="generic" go test ./e2e/... -count=1
 
 dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
@@ -105,8 +105,7 @@ dev-rustfs: ## Install rustfs as an S3 compatible object store
 	  --set gatewayApi.enabled=false \
 	  --set gatewayApi.gatewayClass="" \
 	  --set service.type=NodePort \
-	  --set mode.distributed.enabled=false \
-	  --set secret.allowInsecureDefaults=true # required for dev
+	  --set mode.distributed.enabled=false
 
 dev-rqlite: ## Install rqlite for storing persistent state
 	helm repo add rqlite https://rqlite.github.io/helm-charts
