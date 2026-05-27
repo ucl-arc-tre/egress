@@ -24,11 +24,7 @@ storage:
     secret_access_key: s3user # pragma: allowlist secret
 
 db:
-  provider: rqlite
-  rqlite:
-    baseUrl: http://rqlite.rqlite.svc.cluster.local
-    username: dbuser
-    password: dbuser # pragma: allowlist secret
+  provider: inmemory
 
 auth:
   basic:
