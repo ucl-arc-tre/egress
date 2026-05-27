@@ -14,7 +14,11 @@ import (
 )
 
 const (
-	bucketName = "bucket1"
+	devEndpoint = "http://localhost:8081"
+	bucketName  = "bucket1"
+	accessKey   = "s3user"
+	secretKey   = "s3user"
+	region      = "us-east-1"
 )
 
 type S3Provider struct{}
@@ -37,11 +41,11 @@ func newS3Client() *awsS3.Client {
 		context.Background(),
 		awsConfig.WithCredentialsProvider(awsCredentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
-				AccessKeyID:     "rustfsadmin",
-				SecretAccessKey: "rustfsadmin",
+				AccessKeyID:     accessKey,
+				SecretAccessKey: secretKey,
 			},
 		}),
-		awsConfig.WithRegion("us-east-1"),
+		awsConfig.WithRegion(region),
 	))
 	client := awsS3.NewFromConfig(
 		cfg,
@@ -56,7 +60,7 @@ type DevResolver struct{}
 func (r DevResolver) ResolveEndpoint(ctx context.Context, params awsS3.EndpointParameters) (
 	awsEndpoints.Endpoint, error,
 ) {
-	url, err := url.Parse("http://localhost:8081")
+	url, err := url.Parse(devEndpoint)
 	if err != nil {
 		panic(err)
 	}
