@@ -46,6 +46,12 @@ func TestGetFilesGeneric(t *testing.T) {
 			expectedStatusCode: 520,
 		},
 		{
+			name:               "missing location",
+			body:               `{"files_location":""}`,
+			genericClient:      generic.MockClient{},
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
 			name: "ok",
 			body: `{"files_location":"http://storage.local"}`,
 			genericClient: generic.MockClient{

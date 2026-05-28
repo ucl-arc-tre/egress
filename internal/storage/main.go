@@ -7,6 +7,9 @@ import (
 )
 
 func ParseLocation(raw string) (*types.LocationURI, error) {
+	if raw == "" {
+		return nil, types.NewErrInvalidObjectF("location must not be empty")
+	}
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return nil, err
