@@ -7,13 +7,16 @@ DEV_NODEPORT := 30001
 DEV_EXTERNAL_PORT := 8080
 DEV_RUSTFS_NODEPORT := 32000
 DEV_RUSTFS_EXTERNAL_PORT := 8081
-DEV_RQLITE_USERNAME := "dbuser"
-DEV_RQLITE_PASSWORD := "dbuser"
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
 DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
 DEV_STORAGE_ROOT := "/tmp/storage"
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
+
+DEV_RUSTFS_ACCESS_KEY := "s3user"
+DEV_RUSTFS_SECRET_KEY := "s3user"
+DEV_RQLITE_USERNAME := "dbuser"
+DEV_RQLITE_PASSWORD := "dbuser"
 
 define assert_command_exists
 	if ! command -v $(1) &> /dev/null; then \
@@ -94,13 +97,14 @@ dev-certmanager: ## Install cert-manager and setup a CA for issuing mTLS certs
 dev-rustfs: ## Install rustfs as an S3 compatible object store
 	helm repo add rustfs https://charts.rustfs.com
 	helm upgrade rustfs rustfs/rustfs -n rustfs --create-namespace --install \
+	  --set secret.rustfs.access_key=$(DEV_RUSTFS_ACCESS_KEY) \
+	  --set secret.rustfs.secret_key=$(DEV_RUSTFS_SECRET_KEY) \
 	  --set mode.standalone.enabled=true \
 	  --set replicaCount=1 \
 	  --set gatewayApi.enabled=false \
 	  --set gatewayApi.gatewayClass="" \
 	  --set service.type=NodePort \
-	  --set mode.distributed.enabled=false \
-		--set secret.allowInsecureDefaults=true # required for dev
+	  --set mode.distributed.enabled=false
 
 dev-rqlite: ## Install rqlite for storing persistent state
 	helm repo add rqlite https://rqlite.github.io/helm-charts

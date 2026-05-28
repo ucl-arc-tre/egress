@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func TestBucketNameFromLocation(t *testing.T) {
@@ -20,4 +21,10 @@ func TestBucketNameFromLocation(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = location.BucketName()
 	assert.Error(t, err)
+}
+
+func TestParseLocationEmptyLocation(t *testing.T) {
+	_, err := ParseLocation("")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, types.ErrInvalidObject)
 }

@@ -52,6 +52,12 @@ func TestGetFiles(t *testing.T) {
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
+			name:               "empty location",
+			body:               `{"files_location":""}`,
+			s3client:           s3.MockClient{},
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
 			name: "ok",
 			body: `{"files_location":"s3://bucket"}`,
 			s3client: s3.MockClient{
@@ -160,7 +166,8 @@ func TestGetFileId(t *testing.T) {
 			approvals: map[types.FileId]types.Approval{
 				types.FileId(fileId1): {
 					UserId:      "user1",
-					Destination: "world"},
+					Destination: "world",
+				},
 			},
 			expectedStatusCode: http.StatusBadRequest,
 			expectedBody:       `{"message":"Required 1 approvals for destination trusted but only had 0"}`,
