@@ -14,7 +14,10 @@ The Egress service provides a controlled file download mechanism with an approva
 
 Lists all files in a specified location along with their approval status.
 
-**Endpoint:** `GET /{project-id}/files`
+**Endpoint:**
+```http
+GET /{project-id}/files
+```
 
 ```mermaid
 sequenceDiagram
@@ -58,11 +61,15 @@ sequenceDiagram
 **Notes:**
 - File location URI is parsed to determine the storage backend and bucket name
 
-### 2. Approve File
+### 2. Approve (or Reject) File
 
 Adds an approval from a specific user for a file within a given project.
 
-**Endpoint:** `PUT /{project-id}/files/{file-id}/approve`
+**Endpoints:**
+```http
+PUT /{project-id}/files/{file-id}/approve
+PUT /{project-id}/files/{file-id}/reject
+```
 
 ```mermaid
 sequenceDiagram
@@ -70,14 +77,14 @@ sequenceDiagram
     participant Handler
     participant Database
 
-    Client->>Handler: PUT /{project-id}/files/{file-id}/approve<br/>body={user_id}
+    Client->>Handler: PUT /{project-id}/files/{file-id}/approve<br>or<br>PUT /{project-id}/files/{file-id}/reject<br/>body={user_id, destination, comment}
 
     activate Handler
     Handler->>Handler: Parse request
 
-    Handler->>Database: ApproveFile(projectId, fileId, userId)
+    Handler->>Database: ApprovalEvent(projectId, fileId, userId, destination, comment)
     activate Database
-    Database->>Database: INSERT <br/>file_approvals(project_id, file_id, user_id)
+    Database->>Database: INSERT <br/>events(project_id, file_id, user_id, destination, comment)
     Database-->>Handler: Success
     deactivate Database
 
@@ -86,20 +93,23 @@ sequenceDiagram
 ```
 
 **Key Steps:**
-1. Client provides the user ID of the approver
-2. Handler calls the database to insert an approval record into the database
-4. Handler returns `204 No Content` on success
+1. Client provides the user ID of egress checker (i.e. approver or rejecter)
+2. Handler calls the database to insert an approval or rejection record into the database
+3. Handler returns `204 No Content` on success
 
 **Notes:**
-- The database `INSERT` for adding an approval is idempotent. Therefore, multiple approvals for same `projectId`/`FileId`/`userId` combination are ignored
-- Multiple approvals can be added by different users for the same file
+- Each approval writes a new event row; the read side de-duplicates by `{user_id, destination}` to make approvals effectively idempotent.
+- Multiple checkers can approve or reject the same file to different destinations
 - No validation is performed against the storage backend at this stage
 
 ### 3. Download File
 
-Downloads an approved file if it meets the required approval threshold and size constraints.
+Downloads a file if it meets the required approval threshold and size constraints.
 
-**Endpoint:** `GET /{project-id}/files/{file-id}`
+**Endpoint:**
+```http
+GET /{project-id}/files/{file-id}
+```
 
 ```mermaid
 sequenceDiagram
@@ -108,7 +118,7 @@ sequenceDiagram
     participant Database
     participant S3Storage
 
-    Client->>Handler: GET /{project-id}/files/{file-id}<br/>body={required_approvals, files_location, max_file_size}
+    Client->>Handler: GET /{project-id}/files/{file-id}<br/>body={required_approvals, files_location, max_file_size, user_id, comment}
 
     activate Handler
     Handler->>Handler: Parse request
@@ -142,18 +152,55 @@ sequenceDiagram
             Handler-->>Client: 200 OK<br/>Content-Type: application/octet-stream
             Handler->>Client: Stream file content
             Handler->>S3Storage: Close stream
+
+            Handler->>Database: DownloadEvent(projectId, fileId, userId, destination, comment)
+            activate Database
+            Database->>Database: INSERT <br/>events(project_id, file_id, user_id, destination, comment)
+            Database-->>Handler: Success
+            deactivate Database
         end
     end
     deactivate Handler
 ```
 
 **Key Steps:**
-1. Client provides required approval count, file location, and maximum allowed file size
+1. Client provides required approval count, file location, and maximum allowed file size, and optionally the user-id and a comment
 2. Handler retrieves approval records for the project from the database
 3. Handler validates that the file has sufficient approvals
 4. Handler queries the S3 storage backend to retrieve the file
 5. Handler validates the file size against the maximum allowed size
 6. Handler streams file content back to the client
+
+### 4. List Events
+
+**Endpoint:**
+```http
+GET /{project-id}/events
+```
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Database
+
+    Client->>Handler: GET /{project-id}/events
+
+    activate Handler
+    Handler->>Handler: Parse request
+
+    Handler->>Database: FileEvents(projectId)
+    activate Database
+    Database->>Database: Query events for projectId
+    Database-->>Handler: ProjectEvents map<br/>([]Event by fileId)
+    deactivate Database
+
+    Handler->>Handler: Flatten events across all files
+    Handler->>Handler: Sort events chronologically
+
+    Handler-->>Client: 200 OK<br/>EventListResponse
+    deactivate Handler
+```
 
 ## Error Responses
 

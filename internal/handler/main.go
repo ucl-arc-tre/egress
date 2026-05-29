@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,33 @@ func New() *Handler {
 		panic(err)
 	}
 	return &Handler{db: db, storage: storage}
+}
+
+func (h *Handler) GetProjectIdEvents(ctx *gin.Context, projectId openapi.ProjectIdParam) {
+	projectEvents, err := h.db.FileEvents(types.ProjectId(projectId))
+	if err != nil {
+		setError(ctx, projectId, err, "Failed to get events")
+		return
+	}
+
+	response := openapi.EventListResponse{}
+	for fileId, events := range projectEvents {
+		for _, e := range events {
+			response = append(response, openapi.Event{
+				FileId:      string(fileId),
+				Datetime:    e.Time,
+				UserId:      string(e.UserId),
+				Action:      (*openapi.EventAction)(&e.Action),
+				Destination: (*string)(&e.Destination),
+				Comment:     &e.Comment,
+			})
+		}
+	}
+	sort.SliceStable(response, func(a, b int) bool {
+		return response[a].Datetime.Before(response[b].Datetime)
+	})
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
@@ -120,6 +148,20 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 
+	userId := optional(data.UserId)
+	comment := optional(data.Comment)
+	err = h.db.DownloadFile(
+		types.ProjectId(projectId),
+		types.FileId(fileId),
+		types.UserId(userId),
+		types.Destination(data.Destination),
+		comment,
+	)
+	if err != nil {
+		setError(ctx, projectId, err, "Failed to write download file event")
+		return
+	}
+
 	ctx.Header("Content-Type", "application/octet-stream")
 	ctx.Status(http.StatusOK)
 	numBytes, err := io.Copy(ctx.Writer, file.Content)
@@ -138,14 +180,38 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
+	comment := optional(data.Comment)
 	err := h.db.ApproveFile(
 		types.ProjectId(projectId),
 		types.FileId(fileId),
 		types.UserId(data.UserId),
 		types.Destination(data.Destination),
+		comment,
 	)
 	if err != nil {
 		setError(ctx, projectId, err, "Failed to approve file")
+		return
+	}
+	ctx.Status(http.StatusNoContent)
+}
+
+func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
+	data := openapi.RejectFileRequest{}
+	if err := ctx.BindJSON(&data); err != nil {
+		log.Err(err).Any("projectId", projectId).Msg("Failed to bind reject file json")
+		setBadRequest(ctx, "Failed to parse request body")
+		return
+	}
+	comment := optional(data.Comment)
+	err := h.db.RejectFile(
+		types.ProjectId(projectId),
+		types.FileId(fileId),
+		types.UserId(data.UserId),
+		types.Destination(data.Destination),
+		comment,
+	)
+	if err != nil {
+		setError(ctx, projectId, err, "Failed to reject file")
 		return
 	}
 	ctx.Status(http.StatusNoContent)
@@ -161,4 +227,11 @@ func (h *Handler) Ready(ctx *gin.Context) {
 
 func (h *Handler) Ping(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
+}
+
+func optional(param *string) string {
+	if param != nil {
+		return *param
+	}
+	return ""
 }

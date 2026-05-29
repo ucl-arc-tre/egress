@@ -33,4 +33,5 @@ type PartialListFileResponse struct {
 type Approval struct {
 	UserId      string `json:"user_id"`
 	Destination string `json:"destination"`
+	Comment     string `json:"comment"`
 }

@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -74,11 +76,11 @@ func TestGetFiles(t *testing.T) {
 				},
 			},
 			approvals: map[types.FileId]types.Approval{
-				"etag1": {UserId: "user1", Destination: "trusted"},
-				"etag2": {UserId: "user1", Destination: "trusted"},
+				"etag1": {UserId: "user1", Destination: "trusted", Comment: "ok"},
+				"etag2": {UserId: "user1", Destination: "trusted", Comment: "ok"},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedBody:       `[{"approvals":[{"destination":"trusted","user_id":"user1"}],"file_name":"object1","id":"etag1","size":11}]`,
+			expectedBody:       `[{"approvals":[{"comment":"ok","destination":"trusted","user_id":"user1"}],"file_name":"object1","id":"etag1","size":11}]`,
 		},
 	}
 
@@ -93,7 +95,8 @@ func TestGetFiles(t *testing.T) {
 					types.ProjectId(projectId),
 					fileId,
 					approval.UserId,
-					approval.Destination)
+					approval.Destination,
+					approval.Comment)
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -211,7 +214,7 @@ func TestGetFileId(t *testing.T) {
 				db:      inmemory.New(),
 			}
 			for fileId, approval := range tc.approvals {
-				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination)
+				err := handler.db.ApproveFile(types.ProjectId(projectId), fileId, approval.UserId, approval.Destination, "")
 				assert.NoError(t, err)
 			}
 			writer := httptest.NewRecorder()
@@ -242,13 +245,15 @@ func TestApproveFileId(t *testing.T) {
 	}{
 		{
 			name:               "invalid body",
+			fileId:             "etag1",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
 			expectedApprovals:  0,
 		},
 		{
 			name:               "ok",
-			body:               `{"user_id":"user1","destination":"trusted"}`,
+			fileId:             "etag1",
+			body:               `{"user_id":"user1","destination":"trusted","comment":"good"}`,
 			expectedStatusCode: http.StatusNoContent,
 			expectedBody:       ``,
 			expectedApprovals:  1,
@@ -257,7 +262,9 @@ func TestApproveFileId(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			handler := &Handler{db: inmemory.New()}
+			handler := &Handler{
+				db: inmemory.New(),
+			}
 			writer := httptest.NewRecorder()
 			ctx, router := gin.CreateTestContext(writer)
 			router.PUT("/", func(ctx *gin.Context) {
@@ -278,7 +285,149 @@ func TestApproveFileId(t *testing.T) {
 			if tc.expectedApprovals > 0 {
 				assert.Equal(t, types.UserId("user1"), fileApprovals[0].UserId)
 				assert.Equal(t, types.Destination("trusted"), fileApprovals[0].Destination)
+				assert.Equal(t, "good", fileApprovals[0].Comment)
 			}
 		})
+	}
+}
+
+func TestRejectFileId(t *testing.T) {
+	testCases := []struct {
+		name   string
+		body   string
+		fileId string
+
+		expectedStatusCode int
+		expectedBody       string
+		expectedEvents     int
+	}{
+		{
+			name:               "invalid body",
+			fileId:             "etag1",
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedEvents:     0,
+		},
+		{
+			name:               "ok",
+			fileId:             "etag1",
+			body:               `{"user_id":"user1","destination":"trusted","comment":"bad"}`,
+			expectedStatusCode: http.StatusNoContent,
+			expectedBody:       ``,
+			expectedEvents:     1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := &Handler{
+				db: inmemory.New(),
+			}
+			writer := httptest.NewRecorder()
+			ctx, router := gin.CreateTestContext(writer)
+			router.PUT("/", func(ctx *gin.Context) {
+				handler.PutProjectIdFilesFileIdReject(ctx, projectId, tc.fileId)
+			})
+			ctx.Request, _ = http.NewRequest(http.MethodPut, "/", strings.NewReader(tc.body))
+			router.ServeHTTP(writer, ctx.Request)
+
+			assert.Equal(t, tc.expectedStatusCode, writer.Code)
+			body, err := io.ReadAll(writer.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedBody, string(body))
+
+			events, err := handler.db.FileEvents(projectId)
+			assert.NoError(t, err)
+			fileEvents := events[types.FileId(tc.fileId)]
+			assert.Len(t, fileEvents, tc.expectedEvents)
+			if tc.expectedEvents > 0 {
+				assert.Equal(t, types.UserId("user1"), fileEvents[0].UserId)
+				assert.Equal(t, types.Destination("trusted"), fileEvents[0].Destination)
+				assert.Equal(t, "bad", fileEvents[0].Comment)
+			}
+		})
+	}
+}
+
+func TestGetEvents(t *testing.T) {
+	handler := &Handler{
+		db: inmemory.New(),
+	}
+	sourceEvents := []struct {
+		action      types.EventAction
+		fileId      types.FileId
+		userId      types.UserId
+		destination types.Destination
+		comment     string
+		runner      func(types.ProjectId, types.FileId, types.UserId, types.Destination, string) error
+	}{
+		{
+			action:      "Approval",
+			fileId:      "file1",
+			userId:      "user2",
+			destination: "trusted",
+			comment:     "ok",
+			runner:      handler.db.ApproveFile,
+		},
+		{
+			action:      "Rejection",
+			fileId:      "file2",
+			userId:      "user1",
+			destination: "trusted",
+			comment:     "bad",
+			runner:      handler.db.RejectFile,
+		},
+		{
+			action:      "Download",
+			fileId:      "file1",
+			userId:      "user1",
+			destination: "trusted",
+			comment:     "results",
+			runner:      handler.db.DownloadFile,
+		},
+	}
+
+	// Log the events
+	for _, e := range sourceEvents {
+		err := e.runner(types.ProjectId(projectId), e.fileId, e.userId, e.destination, e.comment)
+		assert.NoError(t, err)
+	}
+
+	writer := httptest.NewRecorder()
+	ctx, router := gin.CreateTestContext(writer)
+	router.GET("/", func(ctx *gin.Context) {
+		handler.GetProjectIdEvents(ctx, projectId)
+	})
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/", nil)
+	router.ServeHTTP(writer, ctx.Request)
+
+	assert.Equal(t, http.StatusOK, writer.Code)
+	body, err := io.ReadAll(writer.Body)
+	assert.NoError(t, err)
+
+	// Unmarshal events from the response body
+	var events []struct {
+		Datetime    time.Time `json:"datetime"`
+		Action      string    `json:"action"`
+		FileId      string    `json:"file_id"`
+		UserId      string    `json:"user_id"`
+		Destination string    `json:"destination"`
+		Comment     string    `json:"comment"`
+	}
+	assert.NoError(t, json.Unmarshal(body, &events))
+	assert.Len(t, events, len(sourceEvents))
+
+	// Verify content of the events
+	for i, e := range events {
+		assert.Equal(t, string(sourceEvents[i].action), e.Action)
+		assert.Equal(t, string(sourceEvents[i].fileId), e.FileId)
+		assert.Equal(t, string(sourceEvents[i].userId), e.UserId)
+		assert.Equal(t, string(sourceEvents[i].destination), e.Destination)
+		assert.Equal(t, sourceEvents[i].comment, e.Comment)
+	}
+
+	// Verify ordering of the events
+	for i := 1; i < len(events); i++ {
+		assert.True(t, events[i].Datetime.After(events[i-1].Datetime))
 	}
 }

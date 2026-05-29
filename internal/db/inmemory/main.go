@@ -2,17 +2,18 @@ package inmemory
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ucl-arc-tre/egress/internal/types"
 )
 
 func New() *DB {
-	return &DB{state: map[types.ProjectId]types.ProjectApprovals{}}
+	return &DB{state: map[types.ProjectId]types.ProjectEvents{}}
 }
 
 type DB struct {
 	mu    sync.RWMutex
-	state map[types.ProjectId]types.ProjectApprovals
+	state map[types.ProjectId]types.ProjectEvents
 }
 
 func (db *DB) ApproveFile(
@@ -20,43 +21,69 @@ func (db *DB) ApproveFile(
 	fileId types.FileId,
 	userId types.UserId,
 	destination types.Destination,
+	comment string,
 ) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if _, exists := db.state[projectId]; !exists {
-		db.state[projectId] = types.ProjectApprovals{}
-	}
-
-	if _, exists := db.state[projectId][fileId]; !exists {
-		db.state[projectId][fileId] = types.FileApprovals{}
-	}
-
-	// Enforce uniqueness of {file_id, user_id, destination} within a project
-	// A duplicate call is treated as idempotent
-	for _, existing := range db.state[projectId][fileId] {
-		if existing.UserId == userId && existing.Destination == destination {
-			return nil
-		}
-	}
-
-	approval := types.Approval{
-		UserId:      userId,
-		Destination: destination,
-	}
-	db.state[projectId][fileId] = append(db.state[projectId][fileId], approval)
+	db.appendEvent(types.EventActionApproval, projectId, fileId, userId, destination, comment)
 	return nil
 }
 
-func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, error) {
+func (db *DB) RejectFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	db.appendEvent(types.EventActionRejection, projectId, fileId, userId, destination, comment)
+	return nil
+}
+
+func (db *DB) DownloadFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	db.appendEvent(types.EventActionDownload, projectId, fileId, userId, destination, comment)
+	return nil
+}
+
+func (db *DB) FileApprovals(
+	projectId types.ProjectId,
+) (types.ProjectApprovals, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	projectApprovals, exists := db.state[projectId]
+	events, exists := db.state[projectId]
 	if !exists {
 		return types.ProjectApprovals{}, nil
 	}
-	return projectApprovals, nil
+	return events.ProjectApprovals(), nil
+}
+
+func (db *DB) FileEvents(
+	projectId types.ProjectId,
+) (types.ProjectEvents, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	events, exists := db.state[projectId]
+	if !exists {
+		return types.ProjectEvents{}, nil
+	}
+	// Events should already be in chronological order as they
+	// are appended to FileEvents. Hence, sorting not required
+	return events, nil
 }
 
 func (db *DB) Migrate() error {
@@ -66,4 +93,31 @@ func (db *DB) Migrate() error {
 
 func (db *DB) IsReady() bool {
 	return true
+}
+
+// Timestamp and append event to the in-memory store
+func (db *DB) appendEvent(
+	action types.EventAction,
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) {
+	if _, exists := db.state[projectId]; !exists {
+		db.state[projectId] = types.ProjectEvents{}
+	}
+	if _, exists := db.state[projectId][fileId]; !exists {
+		db.state[projectId][fileId] = types.FileEvents{}
+	}
+	event := types.Event{
+		Time:   time.Now(),
+		Action: action,
+		EventDetails: types.EventDetails{
+			UserId:      userId,
+			Destination: destination,
+			Comment:     comment,
+		},
+	}
+	db.state[projectId][fileId] = append(db.state[projectId][fileId], event)
 }

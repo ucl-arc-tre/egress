@@ -57,6 +57,7 @@ dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
 
 dev-destroy: ## Destroy the dev env
 	k3d cluster delete $(K3D_CLUSTER_NAME)
+	rm -rf $(DEV_STORAGE_ROOT)
 
 dev-helm: ## Deploy the dev helm chart
 	helm upgrade --install --create-namespace -n dev -f deploy/dev/values.yaml egress ./chart
@@ -113,7 +114,8 @@ dev-rqlite: ## Install rqlite for storing persistent state
 	  --set-json='config.users[0].password=$(DEV_RQLITE_PASSWORD)' \
 	  --set-json='config.users[0].perms=["all"]' \
 	  --set replicaCount=1 \
-	  --set service.type=ClusterIP
+	  --set service.type=ClusterIP \
+	  --set persistence.size=1Gi
 
 dev-storage: ## Deploy the storage server
 	docker buildx build -f e2e/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .

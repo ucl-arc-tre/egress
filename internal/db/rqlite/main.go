@@ -3,9 +3,15 @@ package rqlite
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	rq "github.com/rqlite/gorqlite"
 	"github.com/ucl-arc-tre/egress/internal/types"
+)
+
+const (
+	datetimeLegacyFormat = time.DateTime // To parse old events timestamped within rqlite
+	datetimeSubsecFormat = time.DateTime + ".000"
 )
 
 type DB struct {
@@ -32,63 +38,112 @@ func (db *DB) ApproveFile(
 	fileId types.FileId,
 	userId types.UserId,
 	destination types.Destination,
+	comment string,
 ) error {
-	sqlApproveFile := `INSERT OR IGNORE INTO file_approvals (project_id, file_id, user_id, destination) VALUES (?, ?, ?, ?)`
+	return db.insertEvent(types.EventActionApproval, projectId, fileId, userId, destination, comment)
+}
 
-	stmt := rq.ParameterizedStatement{
-		Query:     sqlApproveFile,
-		Arguments: []any{projectId, fileId, userId, destination},
-	}
+func (db *DB) RejectFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	return db.insertEvent(types.EventActionRejection, projectId, fileId, userId, destination, comment)
+}
 
-	wr, operr := db.conn.WriteOneParameterized(stmt)
-	err := unifyErrors("[rqlite] failed to execute approve file insert", operr, wr.Err)
-
-	return err
+func (db *DB) DownloadFile(
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	return db.insertEvent(types.EventActionDownload, projectId, fileId, userId, destination, comment)
 }
 
 func (db *DB) FileApprovals(projectId types.ProjectId) (types.ProjectApprovals, error) {
-	sqlFileApprovals := `SELECT file_id, user_id, destination FROM file_approvals WHERE project_id = ? ORDER BY file_id`
+	events, err := db.FileEvents(projectId)
+	if err != nil {
+		return nil, err
+	}
+	return events.ProjectApprovals(), nil
+}
+
+func (db *DB) FileEvents(projectId types.ProjectId) (types.ProjectEvents, error) {
+	sqlFileEvents := `SELECT file_id, user_id, destination, action, comment, created_at FROM events WHERE project_id = ? ORDER BY id ASC`
 
 	stmt := rq.ParameterizedStatement{
-		Query:     sqlFileApprovals,
+		Query:     sqlFileEvents,
 		Arguments: []any{projectId},
 	}
 
 	qr, operr := db.conn.QueryOneParameterized(stmt)
-	err := unifyErrors("[rqlite] failed to execute approvals query", operr, qr.Err)
+	err := unifyErrors("[rqlite] failed to execute events query", operr, qr.Err)
 	if err != nil {
 		return nil, err
 	}
 
-	// Make ProjectApprovals map from query results
-	approvals := make(types.ProjectApprovals)
+	projectEvents := make(types.ProjectEvents)
 	for qr.Next() {
-		var fileIdStr, userIdStr, destinationStr string
-		if err := qr.Scan(&fileIdStr, &userIdStr, &destinationStr); err != nil {
+		var fileId, userId, destination, action, comment, createdAt string
+		if err := qr.Scan(&fileId, &userId, &destination, &action, &comment, &createdAt); err != nil {
 			return nil, fmt.Errorf("[rqlite] failed to scan row: %w", err)
 		}
-
-		fileId := types.FileId(fileIdStr)
-		approval := types.Approval{
-			UserId:      types.UserId(userIdStr),
-			Destination: types.Destination(destinationStr),
+		dt, err := parseDatetime(createdAt)
+		if err != nil {
+			return nil, fmt.Errorf("[rqlite] failed to parse timestamp %q: %w", createdAt, err)
 		}
-
-		// Append approval to file's approval list
-		if _, exists := approvals[fileId]; !exists {
-			approvals[fileId] = types.FileApprovals{}
+		event := types.Event{
+			Time:   dt,
+			Action: types.EventAction(action),
+			EventDetails: types.EventDetails{
+				UserId:      types.UserId(userId),
+				Destination: types.Destination(destination),
+				Comment:     comment,
+			},
 		}
-		approvals[fileId] = append(approvals[fileId], approval)
+		fid := types.FileId(fileId)
+		projectEvents[fid] = append(projectEvents[fid], event)
 	}
-	return approvals, nil
+	return projectEvents, nil
 }
 
 func (db *DB) IsReady() bool {
-	sqlIsReady := `SELECT 1 FROM file_approvals LIMIT 1`
+	sqlIsReady := `SELECT 1 FROM events LIMIT 1`
 
 	qr, operr := db.conn.QueryOne(sqlIsReady)
-
 	return operr == nil && qr.Err == nil
+}
+
+func (db *DB) insertEvent(
+	action types.EventAction,
+	projectId types.ProjectId,
+	fileId types.FileId,
+	userId types.UserId,
+	destination types.Destination,
+	comment string,
+) error {
+	sqlInsert := `INSERT INTO events (project_id, file_id, user_id, destination, action, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	createdAt := time.Now().UTC().Format(datetimeSubsecFormat)
+	stmt := rq.ParameterizedStatement{
+		Query:     sqlInsert,
+		Arguments: []any{projectId, fileId, userId, destination, action, comment, createdAt},
+	}
+
+	wr, operr := db.conn.WriteOneParameterized(stmt)
+	return unifyErrors("[rqlite] failed to insert event", operr, wr.Err)
+}
+
+// Parse datetime strings while accommodating for the non-subsecond
+// precision of the default values for 'created_at' column
+func parseDatetime(s string) (time.Time, error) {
+	if t, err := time.Parse(datetimeSubsecFormat, s); err == nil {
+		return t, nil
+	}
+	return time.Parse(datetimeLegacyFormat, s)
 }
 
 func buildAuthURL(baseURL, username, password string) (string, error) {

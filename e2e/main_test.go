@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ucl-arc-tre/egress/internal/config"
+	"github.com/ucl-arc-tre/egress/internal/openapi"
 )
 
 const (
@@ -22,6 +23,16 @@ const (
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 2 * time.Minute
+)
+
+const (
+	projectId          = "p001"
+	destinationTrusted = "trusted"
+	destinationPublic  = "world"
+	commentApprove1    = "nice"
+	commentApprove2    = "good"
+	commentReject      = "bad"
+	commentDownload    = "results"
 )
 
 var (
@@ -52,7 +63,7 @@ func canPing() bool {
 }
 
 func canListFiles() bool {
-	url := fmt.Sprintf("%s/%s/files", baseApiUrl, "p001")
+	url := fmt.Sprintf("%s/%s/files", baseApiUrl, projectId)
 	body := strings.NewReader(fmt.Sprintf(`{"files_location":"%s"}`, filesLocation))
 	req, err := http.NewRequest(http.MethodGet, url, body)
 	if err != nil {
@@ -64,8 +75,7 @@ func canListFiles() bool {
 }
 
 func TestEndpointResponseCodes(t *testing.T) {
-	projectId := "p0001"
-	fileId := "f1234"
+	fileId := "f1234" // Non-existent file-id/etag
 
 	client := newHTTPClient()
 	tests := []struct {
@@ -88,7 +98,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			name:   "ApproveFile",
 			method: http.MethodPut,
 			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
-			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted"}`),
+			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted","comment":"ok"}`),
 
 			expectedStatusCode: http.StatusNoContent,
 		},
@@ -101,7 +111,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
-			name:   "GetFile",
+			name:   "GetFileNonExistent",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 			body:   makeRequestBodyF(`{"required_approvals":1,"destination":"trusted","files_location":"%s","max_file_size": 1}`, filesLocation),
@@ -113,6 +123,30 @@ func TestEndpointResponseCodes(t *testing.T) {
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 			body:   strings.NewReader(`{"n}`),
+
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:   "GetProjectEvents",
+			method: http.MethodGet,
+			url:    fmt.Sprintf("%s/%s/events", baseApiUrl, projectId),
+			body:   nil,
+
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:   "RejectFile",
+			method: http.MethodPut,
+			url:    fmt.Sprintf("%s/%s/files/%s/reject", baseApiUrl, projectId, fileId),
+			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted","comment":"bad"}`),
+
+			expectedStatusCode: http.StatusNoContent,
+		},
+		{
+			name:   "RejectFileInvalidJson",
+			method: http.MethodPut,
+			url:    fmt.Sprintf("%s/%s/files/%s/reject", baseApiUrl, projectId, fileId),
+			body:   strings.NewReader(`{"user_id}`),
 
 			expectedStatusCode: http.StatusBadRequest,
 		},
@@ -133,7 +167,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 	}
 }
 
-func TestApprovalAndEgress(t *testing.T) {
+func TestApproveAndEgress(t *testing.T) {
 	tests := []struct {
 		name               string
 		approveDestination string
@@ -142,21 +176,20 @@ func TestApprovalAndEgress(t *testing.T) {
 	}{
 		{
 			name:               "ApprovedForTrusted-EgressToTrusted",
-			approveDestination: "trusted",
-			egressDestination:  "trusted",
+			approveDestination: destinationTrusted,
+			egressDestination:  destinationTrusted,
 			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:               "ApprovedForTrusted-EgressToWorld",
-			approveDestination: "trusted",
-			egressDestination:  "world",
+			approveDestination: destinationTrusted,
+			egressDestination:  destinationPublic,
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			projectId := "pTestApprovalAndEgress"
 			userId := "userTestApprovalAndEgress"
 
 			// Upload a file to storage with unique key
@@ -164,79 +197,37 @@ func TestApprovalAndEgress(t *testing.T) {
 			fileContent := fmt.Sprintf("hello %s", key.String())
 			assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
 
-			client := newHTTPClient()
-
 			// List files - expecting file to have no approvals
-			req := must(http.NewRequest(
-				http.MethodGet,
-				fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-				makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-			))
-			req.SetBasicAuth(username, password)
-			res := must(client.Do(req))
-			assert.Equal(t, http.StatusOK, res.StatusCode)
+			files := listFiles(t, projectId)
+			assert.True(t, len(files) > 0)
 
-			partialListFilesResponse := PartialListFilesResponse{}
-			assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
-			assertNoError(res.Body.Close())
-			assert.True(t, len(partialListFilesResponse) > 0)
-			partialListFileResponse, exists := partialListFilesResponse.FileByFilename(key.String())
+			uploadedFile, exists := files.FileByFilename(key.String())
 			assert.True(t, exists)
-			assert.Len(t, partialListFileResponse.Approvals, 0)
+			assert.Len(t, uploadedFile.Approvals, 0)
 
-			// Retrieve the file ID from the list response
-			fileId := partialListFileResponse.Id
+			fileId := uploadedFile.Id
 
 			// Approve uploaded file for the given destination
-			req = must(http.NewRequest(
-				http.MethodPut,
-				fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
-				makeRequestBodyF(`{"user_id": "%s", "destination": "%s"}`, userId, tc.approveDestination),
-			))
-			req.Header.Set("Content-Type", "application/json")
-			req.SetBasicAuth(username, password)
-			res = must(client.Do(req))
-			assert.Equal(t, http.StatusNoContent, res.StatusCode)
+			approve(t, projectId, fileId, userId, tc.approveDestination, commentApprove1)
 
 			// List files - expecting file to have one approval
-			req = must(http.NewRequest(
-				http.MethodGet,
-				fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
-				makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-			))
-			req.SetBasicAuth(username, password)
-			res = must(client.Do(req))
-			assertNoError(json.NewDecoder(res.Body).Decode(&partialListFilesResponse))
-			assertNoError(res.Body.Close())
-			partialListFileResponse, exists = partialListFilesResponse.FileByFilename(key.String())
+			files = listFiles(t, projectId)
+			uploadedFile, exists = files.FileByFilename(key.String())
 			assert.True(t, exists)
-			assert.Len(t, partialListFileResponse.Approvals, 1)
+			assert.Len(t, uploadedFile.Approvals, 1)
 
 			// Attempt to download file to the egress destination
-			req = must(http.NewRequest(
-				http.MethodGet,
-				fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
-				makeRequestBodyF(
-					`{"required_approvals": 1,"destination": "%s", "files_location": "%s","max_file_size": 100}`,
-					tc.egressDestination,
-					filesLocation,
-				),
-			))
-			req.SetBasicAuth(username, password)
-			res = must(client.Do(req))
-			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
-			if tc.expectedStatusCode == http.StatusOK {
-				content := must(io.ReadAll(res.Body))
-				assert.Equal(t, fileContent, string(content))
+			content, status := download(t, projectId, fileId, userId, tc.egressDestination, commentDownload)
+			assert.Equal(t, tc.expectedStatusCode, status)
+			if status == http.StatusOK {
+				assert.Equal(t, fileContent, content)
 			}
 		})
 	}
 }
 
-func TestApproveIdempotency(t *testing.T) {
-	projectId := "p0004"
+func TestApproveThenList(t *testing.T) {
 	userId := "user-" + uuid.New().String()
-	destination := "trusted"
 
 	// Upload a file to storage
 	key := uuid.New()
@@ -253,29 +244,58 @@ func TestApproveIdempotency(t *testing.T) {
 
 	fileId := uploadedFile.Id
 
-	// First pass; only one approval
-	approve(t, projectId, fileId, userId, destination)
+	// Approve file
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove1)
+
+	// List file; expect 1 approval
 	files = listFiles(t, projectId)
 	approvedFile, exists := files.FileById(fileId)
 	assert.True(t, exists)
 	assert.Len(t, approvedFile.Approvals, 1)
 	assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
-	assert.Equal(t, destination, approvedFile.Approvals[0].Destination)
+	assert.Equal(t, destinationTrusted, approvedFile.Approvals[0].Destination)
+	assert.Equal(t, commentApprove1, approvedFile.Approvals[0].Comment)
+}
 
-	// Second pass; still the same one approval
-	approve(t, projectId, fileId, userId, destination)
+func TestMultipleApprovals(t *testing.T) {
+	userId := "user-" + uuid.New().String()
+
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	require.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+
+	// List files - expecting file to have no approvals
+	files := listFiles(t, projectId)
+	assert.True(t, len(files) > 0)
+
+	uploadedFile, exists := files.FileByFilename(key.String())
+	assert.True(t, exists)
+	assert.Len(t, uploadedFile.Approvals, 0)
+
+	fileId := uploadedFile.Id
+
+	// Approve file
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove1)
+	files = listFiles(t, projectId)
+	approvedFile, exists := files.FileById(fileId)
+	assert.True(t, exists)
+	assert.Len(t, approvedFile.Approvals, 1)
+
+	// Approve file again with same {userId,destination}
+	// Approve is not idempotent, but approvals are deduped on
+	// {userId,desitnation}, so only 1 approval is returned
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove2)
 	files = listFiles(t, projectId)
 	approvedFile, _ = files.FileById(fileId)
 	assert.Len(t, approvedFile.Approvals, 1)
 	assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
-	assert.Equal(t, destination, approvedFile.Approvals[0].Destination)
+	assert.Equal(t, destinationTrusted, approvedFile.Approvals[0].Destination)
+	assert.Equal(t, commentApprove1, approvedFile.Approvals[0].Comment)
 }
 
-func TestApproveSameUserMultipleDestinations(t *testing.T) {
-	projectId := "p0008"
+func TestApproveToMultipleDestinations(t *testing.T) {
 	userId := "user-" + uuid.New().String()
-	destination1 := "trusted"
-	destination2 := "world"
 
 	// Upload a file to storage
 	key := uuid.New()
@@ -292,31 +312,151 @@ func TestApproveSameUserMultipleDestinations(t *testing.T) {
 	fileId := uploadedFile.Id
 
 	// Approve file for destination-1
-	approve(t, projectId, fileId, userId, destination1)
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove1)
 	files = listFiles(t, projectId)
 	approvedFile, exists := files.FileById(fileId)
 	assert.True(t, exists)
 	assert.Len(t, approvedFile.Approvals, 1)
 	assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
-	assert.Equal(t, destination1, approvedFile.Approvals[0].Destination)
+	assert.Equal(t, destinationTrusted, approvedFile.Approvals[0].Destination)
 
 	// Approve file for destination-2 by same user; so has 2 approvals
-	approve(t, projectId, fileId, userId, destination2)
+	approve(t, projectId, fileId, userId, destinationPublic, commentApprove1)
 	files = listFiles(t, projectId)
 	approvedFile, exists = files.FileById(fileId)
 	assert.True(t, exists)
 	assert.Len(t, approvedFile.Approvals, 2)
 	assert.Equal(t, userId, approvedFile.Approvals[1].UserId)
-	assert.Equal(t, destination2, approvedFile.Approvals[1].Destination)
+	assert.Equal(t, destinationPublic, approvedFile.Approvals[1].Destination)
 
-	// Approve for destination-1 by same user; still 2 approvals
-	approve(t, projectId, fileId, userId, destination1)
+	// Approve for destination-1 by same user
+	// Approvals are deduped on {userId,desitnation}, so still 2 approvals
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove2)
 	files = listFiles(t, projectId)
 	approvedFile, exists = files.FileById(fileId)
 	assert.True(t, exists)
 	assert.Len(t, approvedFile.Approvals, 2)
-	assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
-	assert.Equal(t, destination1, approvedFile.Approvals[0].Destination)
+}
+
+func TestRejectThenList(t *testing.T) {
+	userId := "user-" + uuid.New().String()
+
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	require.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+
+	// List files - expecting file to have no approvals
+	files := listFiles(t, projectId)
+	assert.True(t, len(files) > 0)
+
+	uploadedFile, exists := files.FileByFilename(key.String())
+	assert.True(t, exists)
+	assert.Len(t, uploadedFile.Approvals, 0)
+
+	fileId := uploadedFile.Id
+
+	// Reject file
+	reject(t, projectId, fileId, userId, destinationTrusted, commentReject)
+
+	// List file; had no approvals, so no impact
+	files = listFiles(t, projectId)
+	approvedFile, exists := files.FileById(fileId)
+	assert.True(t, exists)
+	assert.Len(t, approvedFile.Approvals, 0)
+
+	// List events; expect a rejection event as latest
+	events := listEvents(t, projectId)
+	assert.GreaterOrEqual(t, len(events), 1)
+
+	latest := events[len(events)-1]
+	assert.Equal(t, fileId, latest.FileId)
+	assert.Equal(t, userId, latest.UserId)
+	assert.Equal(t, openapi.EventActionRejection, *latest.Action)
+	assert.Equal(t, destinationTrusted, *latest.Destination)
+	assert.Equal(t, commentReject, *latest.Comment)
+}
+
+func TestApproveThenReject(t *testing.T) {
+	userId := "user-" + uuid.New().String()
+
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+
+	// List files to get file-id of uploaded file
+	files := listFiles(t, projectId)
+	uploadedFile, exists := files.FileByFilename(key.String())
+	assert.True(t, exists)
+
+	fileId := uploadedFile.Id
+
+	// Approve file
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove1)
+	files = listFiles(t, projectId)
+	approvedFile, exists := files.FileById(fileId)
+	assert.True(t, exists)
+	assert.Len(t, approvedFile.Approvals, 1)
+
+	// Now reject file; expect no approvals after this
+	reject(t, projectId, fileId, userId, destinationTrusted, commentReject)
+	files = listFiles(t, projectId)
+	approvedFile, exists = files.FileById(fileId)
+	assert.True(t, exists)
+	assert.Len(t, approvedFile.Approvals, 0)
+}
+
+func TestEventsOfEgressActions(t *testing.T) {
+	userId := "user-" + uuid.New().String()
+
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+
+	// List files to get file-id of uploaded file
+	files := listFiles(t, projectId)
+	uploadedFile, exists := files.FileByFilename(key.String())
+	assert.True(t, exists)
+
+	fileId := uploadedFile.Id
+
+	// Approve, reject, approve and download file
+	approve(t, projectId, fileId, userId, destinationPublic, commentApprove1)
+	reject(t, projectId, fileId, userId, destinationPublic, commentReject)
+	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove2)
+	_, status := download(t, projectId, fileId, userId, destinationTrusted, commentDownload)
+	assert.Equal(t, http.StatusOK, status)
+
+	// Get the 4 latest events and verify that they are -
+	// approve, reject, approve and download events, in that order
+	events := listEvents(t, projectId)
+	assert.GreaterOrEqual(t, len(events), 4)
+
+	approve1 := events[len(events)-4]
+	assert.Equal(t, openapi.EventActionApproval, *approve1.Action)
+	assert.Equal(t, fileId, approve1.FileId)
+	assert.Equal(t, userId, approve1.UserId)
+	assert.Equal(t, commentApprove1, *approve1.Comment)
+
+	reject := events[len(events)-3]
+	assert.Equal(t, openapi.EventActionRejection, *reject.Action)
+	assert.Equal(t, fileId, reject.FileId)
+	assert.Equal(t, userId, reject.UserId)
+	assert.Equal(t, commentReject, *reject.Comment)
+
+	approve2 := events[len(events)-2]
+	assert.Equal(t, openapi.EventActionApproval, *approve2.Action)
+	assert.Equal(t, fileId, approve2.FileId)
+	assert.Equal(t, userId, approve2.UserId)
+	assert.Equal(t, commentApprove2, *approve2.Comment)
+
+	download := events[len(events)-1]
+	assert.Equal(t, openapi.EventActionDownload, *download.Action)
+	assert.Equal(t, fileId, download.FileId)
+	assert.Equal(t, userId, download.UserId)
+	assert.Equal(t, commentDownload, *download.Comment)
 }
 
 func TestAuthFailureWithIncorrectUsername(t *testing.T) {
@@ -341,6 +481,27 @@ func TestAuthFailureWithIncorrectPassword(t *testing.T) {
 	req.SetBasicAuth(username, "badPassword")
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+}
+
+func listEvents(t *testing.T, projectId string) openapi.EventListResponse {
+	t.Helper()
+	client := newHTTPClient()
+
+	eventsUrl := fmt.Sprintf("%s/%s/events", baseApiUrl, projectId)
+	req := must(http.NewRequest(
+		http.MethodGet,
+		eventsUrl,
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
+	))
+	req.SetBasicAuth(username, password)
+	res := must(client.Do(req))
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	events := openapi.EventListResponse{}
+	assertNoError(json.NewDecoder(res.Body).Decode(&events))
+	assertNoError(res.Body.Close())
+
+	return events
 }
 
 func listFiles(t *testing.T, projectId string) PartialListFilesResponse {
@@ -370,6 +531,7 @@ func approve(
 	fileId string,
 	userId string,
 	destination string,
+	comment string,
 ) {
 	t.Helper()
 	client := newHTTPClient()
@@ -378,12 +540,70 @@ func approve(
 	req := must(http.NewRequest(
 		http.MethodPut,
 		approveUrl,
-		makeRequestBodyF(`{"user_id": "%s", "destination": "%s"}`, userId, destination),
+		makeRequestBodyF(`{"user_id": "%s", "destination": "%s", "comment": "%s"}`,
+			userId, destination, comment),
 	))
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+}
+
+func reject(
+	t *testing.T,
+	projectId string,
+	fileId string,
+	userId string,
+	destination string,
+	comment string,
+) {
+	t.Helper()
+	client := newHTTPClient()
+
+	rejectUrl := fmt.Sprintf("%s/%s/files/%s/reject", baseApiUrl, projectId, fileId)
+	req := must(http.NewRequest(
+		http.MethodPut,
+		rejectUrl,
+		makeRequestBodyF(`{"user_id": "%s", "destination": "%s", "comment": "%s"}`,
+			userId, destination, comment),
+	))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
+	res := must(client.Do(req))
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
+}
+
+func download(
+	t *testing.T,
+	projectId string,
+	fileId string,
+	userId string,
+	destination string,
+	comment string,
+) (string, int) {
+	t.Helper()
+	client := newHTTPClient()
+
+	downloadUrl := fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId)
+	req := must(http.NewRequest(
+		http.MethodGet,
+		downloadUrl,
+		makeRequestBodyF(
+			`{"required_approvals": 1,"max_file_size": 100,"files_location": "%s","destination": "%s","user_id": "%s","comment": "%s"}`,
+			filesLocation,
+			destination,
+			userId,
+			comment,
+		),
+	))
+	req.SetBasicAuth(username, password)
+	res := must(client.Do(req))
+
+	var content []byte
+	if res.StatusCode == http.StatusOK {
+		content = must(io.ReadAll(res.Body))
+	}
+	return string(content), res.StatusCode
 }
 
 func makeRequestBodyF(format string, objs ...any) io.Reader {
