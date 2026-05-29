@@ -198,7 +198,6 @@ components:
       required:
         - user_id
         - destination
-        - comment
       properties:
         user_id:
           type: string
@@ -208,7 +207,7 @@ components:
           description: Approved egress destination
         comment:
           type: string
-          description: Comment associated with approval
+          description: Comment associated with approval (optional)
 
     ApproveFileRequest:
       type: object
@@ -287,7 +286,7 @@ components:
           type: string
           format: date-time
           description: Date and time of event; ISO 8601, millisecond resolution
-          example: '2026-04-32T16:48:08.512Z'
+          example: '2026-04-24T16:48:08.512Z'
         file_id:
           type: string
           description: Unique file identifier

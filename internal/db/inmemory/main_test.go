@@ -51,7 +51,7 @@ func TestMultipleApprovals(t *testing.T) {
 	assert.NoError(t, db.ApproveFile(projectId, fileId, userId1, destTrusted, commentApprove1))
 	assert.NoError(t, db.ApproveFile(projectId, fileId, userId1, destTrusted, commentApprove2))
 
-	// Approvals deduped on {userId,desitnation}, so only 1 approval returned
+	// Approvals deduped on {userId,destination}, so only 1 approval returned
 	approvals, err := db.FileApprovals(projectId)
 	assert.NoError(t, err)
 	assert.Len(t, approvals[fileId], 1)
@@ -93,7 +93,7 @@ func TestMultipleApprovalsToMultipleDestinations(t *testing.T) {
 	assert.NoError(t, db.ApproveFile(projectId, fileId, userId1, destTrusted, commentApprove1))
 	assert.NoError(t, db.ApproveFile(projectId, fileId, userId1, destPublic, commentApprove2))
 
-	// Approvals deduped on {userId,desitnation}, so only 2 approval returned
+	// Approvals deduped on {userId,destination}, so only 2 approval returned
 	approvals, err := db.FileApprovals(projectId)
 	assert.NoError(t, err)
 	assert.Len(t, approvals[fileId], 2)

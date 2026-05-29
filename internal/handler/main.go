@@ -55,7 +55,7 @@ func (h *Handler) GetProjectIdEvents(ctx *gin.Context, projectId openapi.Project
 			})
 		}
 	}
-	sort.Slice(response, func(a, b int) bool {
+	sort.SliceStable(response, func(a, b int) bool {
 		return response[a].Datetime.Before(response[b].Datetime)
 	})
 

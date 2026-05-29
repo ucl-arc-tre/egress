@@ -51,8 +51,8 @@ func (db *DB) DownloadFile(
 	destination types.Destination,
 	comment string,
 ) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
 	db.appendEvent(types.EventActionDownload, projectId, fileId, userId, destination, comment)
 	return nil
@@ -81,7 +81,7 @@ func (db *DB) FileEvents(
 	if !exists {
 		return types.ProjectEvents{}, nil
 	}
-	// Events should already be in choronological order as they
+	// Events should already be in chronological order as they
 	// are appended to FileEvents. Hence, sorting not required
 	return events, nil
 }
@@ -119,6 +119,5 @@ func (db *DB) appendEvent(
 			Comment:     comment,
 		},
 	}
-	event.Time = time.Now()
 	db.state[projectId][fileId] = append(db.state[projectId][fileId], event)
 }

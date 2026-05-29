@@ -93,12 +93,12 @@ sequenceDiagram
 ```
 
 **Key Steps:**
-1. Client provides the user ID of egress checker (i.e. approver or rejector)
+1. Client provides the user ID of egress checker (i.e. approver or rejecter)
 2. Handler calls the database to insert an approval or rejection record into the database
-4. Handler returns `204 No Content` on success
+3. Handler returns `204 No Content` on success
 
 **Notes:**
-- The database `INSERT` for adding an approval is not idempotent. However, multiple approvals for the same `projectId`/`FileId`/`userId` are de-duplicated
+- Each approval writes a new event row; the read side de-duplicates by `{user_id, destination}` to make approvals effectively idempotent.
 - Multiple checkers can approve or reject the same file to different destinations
 - No validation is performed against the storage backend at this stage
 
