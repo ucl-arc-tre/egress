@@ -3,15 +3,23 @@ SHELL := /bin/bash
 
 K3D_CLUSTER_NAME := "ucl-arc-tre-egress"
 K3D_K3S_IMAGE_VERSION := rancher/k3s:v1.34.2-k3s1
-DEV_NODEPORT := 30001
-DEV_EXTERNAL_PORT := 8080
-DEV_RUSTFS_NODEPORT := 32000
-DEV_RUSTFS_EXTERNAL_PORT := 8081
 DEV_KUBECONFIG_PATH := "kubeconfig.yaml"
-DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
-DEV_STORAGE_ROOT := "/tmp/storage"
+
 DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
+
+DEV_NODEPORT := 30001
+DEV_EXTERNAL_PORT := 8080
+
+DEV_RUSTFS_NODEPORT := 32000
+DEV_RUSTFS_EXTERNAL_PORT := 8081
+
+DEV_STORAGE_IMAGE := "localhost/storage-server:latest"
+DEV_STORAGE_ROOT := "/tmp/storage"
+
+DEV_AUTH_IMAGE := "localhost/auth-server:latest"
+DEV_AUTH_NODEPORT := 32002
+DEV_AUTH_EXTERNAL_PORT := 8900
 
 DEV_RUSTFS_ACCESS_KEY := "s3user"
 DEV_RUSTFS_SECRET_KEY := "s3user"
@@ -38,7 +46,7 @@ test-unit:  ## Run unit tests
 	go test ./internal/...
 	go test ./pkg/...
 
-test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage ## Run end-to-end tests
+test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage dev-auth ## Run end-to-end tests
 	docker buildx build --tag $(RELEASE_IMAGE) --target release .
 	k3d image import $(RELEASE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	# s3 storage
@@ -72,6 +80,7 @@ dev-k3d: ## Build a k3d cluster for dev, if it doesn't exist already
 		--agents 0 \
 		--port "${DEV_EXTERNAL_PORT}:${DEV_NODEPORT}@server:0:direct" \
 		--port "${DEV_RUSTFS_EXTERNAL_PORT}:${DEV_RUSTFS_NODEPORT}@server:0:direct" \
+		--port "${DEV_AUTH_EXTERNAL_PORT}:${DEV_AUTH_NODEPORT}@server:0:direct" \
 		--k3s-arg="--disable=traefik@server:*" \
 		--k3s-arg="--disable=metrics-server@server:*" \
 		--k3s-arg="--disable-cloud-controller@server:*" \
@@ -121,6 +130,11 @@ dev-storage: ## Deploy the storage server
 	docker buildx build -f e2e/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .
 	k3d image import $(DEV_STORAGE_IMAGE) -c $(K3D_CLUSTER_NAME)
 	kubectl apply -f e2e/storage-server/deploy.yaml
+
+dev-auth: ## Deploy the auth server
+	docker buildx build -f e2e/auth-server/Dockerfile --tag $(DEV_AUTH_IMAGE) --target release .
+	k3d image import $(DEV_AUTH_IMAGE) -c $(K3D_CLUSTER_NAME)
+	kubectl apply -f e2e/auth-server/deploy.yaml
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
