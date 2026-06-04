@@ -83,8 +83,8 @@ func DBConfig() DBConfigBundle {
 	return cfg
 }
 
-func AuthBasicCredentials() AuthBasicCredentialsBundle {
-	return AuthBasicCredentialsBundle{
+func BasicAuthConfig() BasicAuthConfigBundle {
+	return BasicAuthConfigBundle{
 		Username: k.String("auth.basic.username"),
 		Password: k.String("auth.basic.password"),
 	}

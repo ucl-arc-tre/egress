@@ -10,7 +10,7 @@ import (
 
 // Closure for validating HTTP Basic Auth against creds configured
 func validateBasicAuth() func(*gin.Context) {
-	creds := config.AuthBasicCredentials()
+	creds := config.BasicAuthConfig()
 	return func(ctx *gin.Context) {
 		username, password, ok := ctx.Request.BasicAuth()
 		if !ok || username != creds.Username || password != creds.Password { /* pragma: allowlist secret */

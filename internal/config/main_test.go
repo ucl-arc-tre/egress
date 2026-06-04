@@ -79,7 +79,7 @@ db:
 	assert.Equal(t, "dbpassword123", db.Rqlite.Password)
 }
 
-func TestAuthBasicCredentials(t *testing.T) {
+func TestBasicAuthCredentials(t *testing.T) {
 	yaml := `
 auth:
   basic:
@@ -89,7 +89,7 @@ auth:
 	cf := makeConfig(t, "basic-auth.yaml", yaml)
 	InitWithPath(cf)
 
-	auth := AuthBasicCredentials()
+	auth := BasicAuthConfig()
 	assert.Equal(t, "username123", auth.Username)
 	assert.Equal(t, "password123", auth.Password)
 }
