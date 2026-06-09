@@ -68,7 +68,7 @@ auth:
 
 # Service Account for IRSA
 serviceAccount:
-  # Wether to create a new Service Account
+  # Whether to create a new Service Account
   create: true
   # Name for the Service Account, defaults to the deployment's name
   name: null
