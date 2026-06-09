@@ -49,11 +49,3 @@ the EKS cluster and an IAM role with a trust policy that allows the service acco
 (`system:serviceaccount:<namespace>:<serviceAccount.name>`) to assume it. See the
 [AWS IRSA documentation](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
 for details.
-
-### Service account values
-
-| Value                          | Default          | Description                                                                 |
-| ------------------------------ | ---------------- | --------------------------------------------------------------------------- |
-| `serviceAccount.create`        | `false`          | Whether to create a `ServiceAccount` for the deployment. If `false` and `name` is unset, pods use the namespace's `default` SA. |
-| `serviceAccount.name`          | `null`           | Name of the ServiceAccount. Defaults to the release name when `create` is `true`; otherwise references an existing SA. |
-| `serviceAccount.annotations`   | `{}`             | Annotations to apply to the ServiceAccount (e.g. the IRSA role ARN).        |

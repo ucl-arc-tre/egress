@@ -23,7 +23,7 @@ spec:
       {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
       # When create=true, use the created SA (defaulting its name to the release name).
       # When create=false but a name is set, reference that existing SA.
-      # Otherwise both lines are omitted and the pod uses the namespace's default SA.
+      # Otherwise when both lines are omitted the pod uses the namespace's default SA.
       serviceAccountName: {{ if .Values.serviceAccount.create }}{{ .Values.serviceAccount.name | default .Release.Name }}{{ else }}{{ .Values.serviceAccount.name }}{{ end }}
       automountServiceAccountToken: {{ gt (len .Values.serviceAccount.annotations) 0 }} # required if using IRSA
       {{- end }}
