@@ -65,6 +65,9 @@ auth:
   basic:
     username: null
     password: null
+  bearer:
+    issuer_url: null
+    audience: null
 
 # Service Account for IRSA. By default no ServiceAccount is created or referenced and
 # pods use the namespace's default ServiceAccount. Set `create: true` to create one, or

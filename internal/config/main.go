@@ -90,6 +90,13 @@ func BasicAuthConfig() BasicAuthConfigBundle {
 	}
 }
 
+func BearerAuthConfig() BearerAuthConfigBundle {
+	return BearerAuthConfigBundle{
+		IssuerURL: k.String("auth.bearer.issuer_url"),
+		Audience:  k.String("auth.bearer.audience"),
+	}
+}
+
 func DevS3URL() string {
 	return k.String("dev.s3.url")
 }

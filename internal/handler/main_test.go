@@ -127,11 +127,12 @@ func TestGetFileId(t *testing.T) {
 		},
 	}
 	testCases := []struct {
-		name      string
-		body      string
-		fileId    string
-		s3client  s3.MockClient
-		approvals map[types.FileId]types.Approval
+		name       string
+		body       string
+		fileId     string
+		authUserId string
+		s3client   s3.MockClient
+		approvals  map[types.FileId]types.Approval
 
 		expectedStatusCode int
 		expectedBody       string
@@ -140,6 +141,13 @@ func TestGetFileId(t *testing.T) {
 			name:               "invalid body",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+		},
+		{
+			name:               "auth user missmatch",
+			authUserId:         "user1",
+			body:               `{"files_location":"s:/bucket1","max_file_size":100,"destination":"trusted","required_approvals":0,"user_id":"badUser"}`,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
 		},
 		{
 			name:               "bad location",
@@ -220,6 +228,9 @@ func TestGetFileId(t *testing.T) {
 			writer := httptest.NewRecorder()
 			ctx, router := gin.CreateTestContext(writer)
 			router.GET("/", func(ctx *gin.Context) {
+				if tc.authUserId != "" {
+					ctx.Set("sub", tc.authUserId)
+				}
 				handler.GetProjectIdFilesFileId(ctx, projectId, tc.fileId)
 			})
 			ctx.Request, _ = http.NewRequest(http.MethodGet, "/", strings.NewReader(tc.body))
@@ -235,9 +246,10 @@ func TestGetFileId(t *testing.T) {
 
 func TestApproveFileId(t *testing.T) {
 	testCases := []struct {
-		name   string
-		body   string
-		fileId string
+		name       string
+		body       string
+		fileId     string
+		authUserId string
 
 		expectedStatusCode int
 		expectedBody       string
@@ -251,8 +263,18 @@ func TestApproveFileId(t *testing.T) {
 			expectedApprovals:  0,
 		},
 		{
+			name:               "auth user missmatch",
+			fileId:             "etag1",
+			authUserId:         "user1",
+			body:               `{"user_id":"badUser","destination":"trusted","comment":"good"}`,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
+			expectedApprovals:  0,
+		},
+		{
 			name:               "ok",
 			fileId:             "etag1",
+			authUserId:         "user1",
 			body:               `{"user_id":"user1","destination":"trusted","comment":"good"}`,
 			expectedStatusCode: http.StatusNoContent,
 			expectedBody:       ``,
@@ -268,6 +290,7 @@ func TestApproveFileId(t *testing.T) {
 			writer := httptest.NewRecorder()
 			ctx, router := gin.CreateTestContext(writer)
 			router.PUT("/", func(ctx *gin.Context) {
+				ctx.Set("sub", tc.authUserId)
 				handler.PutProjectIdFilesFileIdApprove(ctx, projectId, tc.fileId)
 			})
 			ctx.Request, _ = http.NewRequest(http.MethodPut, "/", strings.NewReader(tc.body))
@@ -293,9 +316,10 @@ func TestApproveFileId(t *testing.T) {
 
 func TestRejectFileId(t *testing.T) {
 	testCases := []struct {
-		name   string
-		body   string
-		fileId string
+		name       string
+		body       string
+		fileId     string
+		authUserId string
 
 		expectedStatusCode int
 		expectedBody       string
@@ -309,8 +333,18 @@ func TestRejectFileId(t *testing.T) {
 			expectedEvents:     0,
 		},
 		{
+			name:               "auth user missmatch",
+			fileId:             "etag1",
+			authUserId:         "user1",
+			body:               `{"user_id":"badUser","destination":"trusted","comment":"bad"}`,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
+			expectedEvents:     0,
+		},
+		{
 			name:               "ok",
 			fileId:             "etag1",
+			authUserId:         "user1",
 			body:               `{"user_id":"user1","destination":"trusted","comment":"bad"}`,
 			expectedStatusCode: http.StatusNoContent,
 			expectedBody:       ``,
@@ -326,6 +360,7 @@ func TestRejectFileId(t *testing.T) {
 			writer := httptest.NewRecorder()
 			ctx, router := gin.CreateTestContext(writer)
 			router.PUT("/", func(ctx *gin.Context) {
+				ctx.Set("sub", tc.authUserId)
 				handler.PutProjectIdFilesFileIdReject(ctx, projectId, tc.fileId)
 			})
 			ctx.Request, _ = http.NewRequest(http.MethodPut, "/", strings.NewReader(tc.body))

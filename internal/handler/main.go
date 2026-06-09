@@ -105,6 +105,10 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
+	userId := optional(data.UserId)
+	if !validateBearerUserId(ctx, userId) {
+		return
+	}
 
 	projectApprovals, err := h.db.FileApprovals(types.ProjectId(projectId))
 	if err != nil {
@@ -148,7 +152,6 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 
-	userId := optional(data.UserId)
 	comment := optional(data.Comment)
 	err = h.db.DownloadFile(
 		types.ProjectId(projectId),
@@ -180,6 +183,9 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
+	if !validateBearerUserId(ctx, data.UserId) {
+		return
+	}
 	comment := optional(data.Comment)
 	err := h.db.ApproveFile(
 		types.ProjectId(projectId),
@@ -200,6 +206,9 @@ func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId open
 	if err := ctx.BindJSON(&data); err != nil {
 		log.Err(err).Any("projectId", projectId).Msg("Failed to bind reject file json")
 		setBadRequest(ctx, "Failed to parse request body")
+		return
+	}
+	if !validateBearerUserId(ctx, data.UserId) {
 		return
 	}
 	comment := optional(data.Comment)
@@ -227,6 +236,21 @@ func (h *Handler) Ready(ctx *gin.Context) {
 
 func (h *Handler) Ping(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
+}
+
+// Checks that the user_id is matches the `sub` claim from the Bearer
+// token (stored as "sub" in the Gin context) when Bearer auth is used
+// The check is skipped for Basic auth
+func validateBearerUserId(ctx *gin.Context, requestUserId string) bool {
+	sub, exists := ctx.Get("sub")
+	if !exists { // Exists only for Bearer auth
+		return true
+	}
+	if uid := sub.(string); uid != requestUserId {
+		setBadRequest(ctx, "user_id does not match authenticated user")
+		return false
+	}
+	return true
 }
 
 func optional(param *string) string {
