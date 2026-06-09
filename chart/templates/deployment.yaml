@@ -20,7 +20,7 @@ spec:
         # https://helm.sh/docs/howto/charts_tips_and_tricks/#automatically-roll-deployments
         checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
-      automountServiceAccountToken: {{ gt (len .Values.serviceAccount.annotations) 0 }} # required for IRSA
+      automountServiceAccountToken: {{ gt (len .Values.serviceAccount.annotations) 0 }} # required if using IRSA
       serviceAccountName: {{ .Values.serviceAccount.name | default .Release.Name }}
       containers:
         - name: "app"
