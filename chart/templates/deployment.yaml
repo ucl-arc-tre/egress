@@ -21,7 +21,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: {{ gt (len .Values.serviceAccount.annotations) 0 }} # required if using IRSA
-      serviceAccountName: {{ .Values.serviceAccount.name | default .Release.Name }}
+      # If we create the ServiceAccount, default its name to the release name; otherwise the
+      # user must supply an existing ServiceAccount name to avoid referencing one that doesn't exist.
+      serviceAccountName: {{ if .Values.serviceAccount.create }}{{ .Values.serviceAccount.name | default .Release.Name }}{{ else }}{{ required "serviceAccount.name is required when serviceAccount.create is false" .Values.serviceAccount.name }}{{ end }}
       containers:
         - name: "app"
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
