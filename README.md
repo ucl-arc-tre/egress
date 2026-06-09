@@ -12,7 +12,7 @@ Install using [helm](https://helm.sh/)
 
 ```bash
 helm install egress oci://ghcr.io/ucl-arc-tre/charts/egress \
-  --version 1.0.1
+  --version 1.1.0
 ```
 
 See [chart/values.yaml](./chart/values.yaml) for values.
