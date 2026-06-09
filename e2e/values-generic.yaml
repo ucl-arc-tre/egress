@@ -31,3 +31,6 @@ auth:
   basic:
     username: egressuser
     password: egressuser # pragma: allowlist secret
+  bearer:
+    issuer_url: "http://auth-server.auth.svc.cluster.local:8900"
+    audience: "egress"

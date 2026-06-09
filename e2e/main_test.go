@@ -20,9 +20,11 @@ const (
 	baseUrl          = "http://localhost:8080"
 	username         = "egressuser"
 	password         = "egressuser" /* pragma: allowlist secret */
+	audience         = "egress"
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 1 * time.Second
 	serviceUpTimeout = 2 * time.Minute
+	authServerUrl    = "http://localhost:8900"
 )
 
 const (
@@ -459,27 +461,122 @@ func TestEventsOfEgressActions(t *testing.T) {
 	assert.Equal(t, commentDownload, *download.Comment)
 }
 
-func TestAuthFailureWithIncorrectUsername(t *testing.T) {
-	client := newHTTPClient()
-	req := must(http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-	))
-	req.SetBasicAuth("badUsername", password)
-	res := must(client.Do(req))
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+func TestBasicAuth(t *testing.T) {
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		expectedStatus int
+	}{
+		// Basic auth with valid creds is used in other tests
+		{
+			name:           "Incorrect username",
+			username:       "badUsername",
+			password:       password,
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "Incorrect password",
+			username:       username,
+			password:       "badPassword",
+			expectedStatus: http.StatusUnauthorized,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client := newHTTPClient()
+			req := makeRequest(t)
+			req.SetBasicAuth(tc.username, tc.password)
+			res := must(client.Do(req))
+
+			assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+		})
+	}
 }
 
-func TestAuthFailureWithIncorrectPassword(t *testing.T) {
+func TestBearerAuth(t *testing.T) {
+	tests := []struct {
+		name           string
+		token          string
+		expectedStatus int
+	}{
+		{
+			name:           "Valid token",
+			token:          mintBearerToken(t, tokenRequest{Audience: audience}),
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Wrong audience",
+			token:          mintBearerToken(t, tokenRequest{Audience: "not-egress"}),
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "Invalid token",
+			token:          "blah12345",
+			expectedStatus: http.StatusUnauthorized,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client := newHTTPClient()
+			req := makeRequest(t)
+			req.Header.Set("Authorization", "Bearer "+tc.token)
+			res := must(client.Do(req))
+
+			assert.Equal(t, tc.expectedStatus, res.StatusCode)
+		})
+	}
+}
+
+func TestBearerAuthUserIdMismatch(t *testing.T) {
+	fileId := "f1234"
 	client := newHTTPClient()
-	req := must(http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/files", baseApiUrl, "p0001"),
-		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
-	))
-	req.SetBasicAuth(username, "badPassword")
+	token := mintBearerToken(t, tokenRequest{}) // sub = "egressuser"
+
+	tests := []struct {
+		name   string
+		method string
+		url    string
+		body   io.Reader
+	}{
+		{
+			name:   "Approve",
+			method: http.MethodPut,
+			url:    fmt.Sprintf("%s/%s/files/%s/approve", baseApiUrl, projectId, fileId),
+			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted","comment":"ok"}`),
+		},
+		{
+			name:   "Reject",
+			method: http.MethodPut,
+			url:    fmt.Sprintf("%s/%s/files/%s/reject", baseApiUrl, projectId, fileId),
+			body:   strings.NewReader(`{"user_id":"user1","destination":"trusted","comment":"bad"}`),
+		},
+		{
+			name:   "Download",
+			method: http.MethodGet,
+			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+			body:   makeRequestBodyF(`{"required_approvals":1,"destination":"trusted","files_location":"foo","max_file_size":1,"user_id":"user1"}`),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(tc.method, tc.url, tc.body)
+			assert.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+token)
+			res, err := client.Do(req)
+
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+		})
+	}
+}
+
+func TestAuthWithNoAuthHeader(t *testing.T) {
+	client := newHTTPClient()
+	req := makeRequest(t)
 	res := must(client.Do(req))
+
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
 }
 
@@ -606,6 +703,45 @@ func download(
 	return string(content), res.StatusCode
 }
 
+func makeRequest(t *testing.T) *http.Request {
+	t.Helper()
+	req := must(http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
+		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
+	))
+	return req
+}
+
 func makeRequestBodyF(format string, objs ...any) io.Reader {
 	return strings.NewReader(fmt.Sprintf(format, objs...))
+}
+
+type tokenRequest struct {
+	Subject  string `json:"sub,omitempty"`
+	Audience string `json:"aud,omitempty"`
+}
+
+type tokenResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+func mintBearerToken(t *testing.T, req tokenRequest) string {
+	t.Helper()
+	body, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	httpReq := must(http.NewRequest(http.MethodPost, authServerUrl+"/token",
+		strings.NewReader(string(body))))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	httpRes := must(newHTTPClient().Do(httpReq))
+	require.Equal(t, http.StatusOK, httpRes.StatusCode)
+
+	var res tokenResponse
+	require.NoError(t, json.NewDecoder(httpRes.Body).Decode(&res))
+	require.NoError(t, httpRes.Body.Close())
+	require.NotEmpty(t, res.AccessToken)
+
+	return res.AccessToken
 }
