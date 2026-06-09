@@ -1,11 +1,11 @@
 package s3
 
 import (
-	"context"
 	"os"
 	"path"
 	"testing"
 
+	awsCredentials "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/stretchr/testify/assert"
 	"github.com/ucl-arc-tre/egress/internal/config"
 )
@@ -17,9 +17,10 @@ func TestEmptyCredsLoadsDefaultConfig(t *testing.T) {
 
 	client, err := newClient(config.S3StorageConfig{Region: "eu-west-2"})
 	assert.NoError(t, err)
+	assert.NotNil(t, client)
 
-	creds, err := client.Options().Credentials.Retrieve(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "", creds.AccessKeyID)
-	assert.Equal(t, "", creds.SecretAccessKey)
+	// When no creds are provided, the default credential chain should be used
+	// rather than a StaticCredentialsProvider.
+	_, isStatic := client.Options().Credentials.(*awsCredentials.StaticCredentialsProvider)
+	assert.False(t, isStatic, "expected default credentials chain, not StaticCredentialsProvider")
 }
