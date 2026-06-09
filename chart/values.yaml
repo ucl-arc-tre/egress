@@ -65,3 +65,8 @@ auth:
   basic:
     username: null
     password: null
+
+serviceAccount:
+  create: true
+  name: null
+  annotations: {}
