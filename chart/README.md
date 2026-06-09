@@ -24,7 +24,8 @@ storage:
 
 On EKS, an IAM role can be assumed by the pod via a projected service account token, removing
 the need to manage long-lived AWS keys. To enable IRSA, leave `access_key_id` and
-`secret_access_key` unset and annotate the service account with the IAM role ARN to assume:
+`secret_access_key` unset, enable ServiceAccount creation, and annotate it with the IAM role
+ARN to assume:
 
 ```yaml
 storage:
@@ -33,6 +34,7 @@ storage:
     region: eu-west-2
 
 serviceAccount:
+  create: true
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<role-name>
 ```
@@ -52,6 +54,6 @@ for details.
 
 | Value                          | Default          | Description                                                                 |
 | ------------------------------ | ---------------- | --------------------------------------------------------------------------- |
-| `serviceAccount.create`        | `true`           | Whether to create a `ServiceAccount` for the deployment.                    |
-| `serviceAccount.name`          | `.Release.Name`  | Name of the service account. Set this if `create` is `false` and reusing an existing one. |
-| `serviceAccount.annotations`   | `{}`             | Annotations to apply to the service account (e.g. the IRSA role ARN).       |
+| `serviceAccount.create`        | `false`          | Whether to create a `ServiceAccount` for the deployment. If `false` and `name` is unset, pods use the namespace's `default` SA. |
+| `serviceAccount.name`          | `null`           | Name of the ServiceAccount. Defaults to the release name when `create` is `true`; otherwise references an existing SA. |
+| `serviceAccount.annotations`   | `{}`             | Annotations to apply to the ServiceAccount (e.g. the IRSA role ARN).        |

@@ -20,10 +20,13 @@ spec:
         # https://helm.sh/docs/howto/charts_tips_and_tricks/#automatically-roll-deployments
         checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      # When create=true, use the created SA (defaulting its name to the release name).
+      # When create=false but a name is set, reference that existing SA.
+      # Otherwise both lines are omitted and the pod uses the namespace's default SA.
+      serviceAccountName: {{ if .Values.serviceAccount.create }}{{ .Values.serviceAccount.name | default .Release.Name }}{{ else }}{{ .Values.serviceAccount.name }}{{ end }}
       automountServiceAccountToken: {{ gt (len .Values.serviceAccount.annotations) 0 }} # required if using IRSA
-      # If we create the ServiceAccount, default its name to the release name; otherwise the
-      # user must supply an existing ServiceAccount name to avoid referencing one that doesn't exist.
-      serviceAccountName: {{ if .Values.serviceAccount.create }}{{ .Values.serviceAccount.name | default .Release.Name }}{{ else }}{{ required "serviceAccount.name is required when serviceAccount.create is false" .Values.serviceAccount.name }}{{ end }}
+      {{- end }}
       containers:
         - name: "app"
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}

@@ -66,12 +66,12 @@ auth:
     username: null
     password: null
 
-# Service Account for IRSA
+# Service Account for IRSA. By default no ServiceAccount is created or referenced and
+# pods use the namespace's default ServiceAccount. Set `create: true` to create one, or
+# set `name` to reference an existing one (e.g. to wire up IRSA).
 serviceAccount:
-  # Whether to create a new Service Account
-  create: true
-  # Name for the Service Account, defaults to the deployment's name
+  create: false
   name: null
-  # Service Account annotations, e.g. the IRSA role ARN
-  # If non-empty, the Service Account token is auto-mounted in pods
+  # ServiceAccount annotations, e.g. the IRSA role ARN.
+  # If non-empty, the ServiceAccount token is auto-mounted in pods.
   annotations: {}
