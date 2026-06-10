@@ -135,7 +135,8 @@ graph TB
 
 ### Storage Backends
 - **S3**: AWS S3-compatible storage
-  - Requires: region, access_key_id, secret_access_key
+  - Requires: region
+  - Authentication: static `access_key_id`/`secret_access_key`, or IRSA on EKS (see [chart README](../../chart/README.md))
   - Supports: bucket-based file organisation
 
 ### Authentication/Authorization
