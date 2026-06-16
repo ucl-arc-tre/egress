@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/url"
 	"strings"
 	"time"
@@ -45,7 +44,7 @@ func bearerAuthenticator() authFunction {
 		header := ctx.GetHeader("Authorization")
 		token := strings.TrimPrefix(header, "Bearer")
 
-		claims, err := validator.ValidateToken(context.Background(), token)
+		claims, err := validator.ValidateToken(ctx, token)
 		if err != nil {
 			fail(ctx, []string{"Bearer"}, err.Error())
 			return
