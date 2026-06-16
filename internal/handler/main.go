@@ -238,7 +238,7 @@ func (h *Handler) Ping(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
 
-// Checks that the user_id is matches the 'sub' claim from the Bearer
+// Checks that the user_id matches the `sub` claim from the Bearer
 // token (stored as "sub" in the Gin context) when Bearer auth is used.
 // If user_id is "" (i.e. optional), then 'sub' is assigned to user_id.
 // The check is skipped for Basic auth
