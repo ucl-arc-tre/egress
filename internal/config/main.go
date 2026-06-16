@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -34,8 +35,10 @@ func Init() {
 func InitWithPath(path string) {
 	k = koanf.New(".")
 	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
-		log.Err(err).Msg("error loading config")
+		log.Fatal().Err(err).Msg("error loading config")
 	}
+
+	validateConfig()
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if IsDebug() {
@@ -107,6 +110,21 @@ func DevS3Bucket() string {
 
 func IsDevS3() bool {
 	return DevS3URL() != ""
+}
+
+// Validate config; fail fast on invalid values
+func validateConfig() {
+	validateURL("db.rqlite.baseUrl")
+	validateURL("auth.bearer.issuer_url")
+}
+
+func validateURL(key string) {
+	if k.Exists(key) {
+		value := k.String(key)
+		if u, err := url.ParseRequestURI(value); err != nil || u.Scheme == "" || u.Host == "" {
+			log.Fatal().Str(key, value).Msg(fmt.Sprintf("%s must be a valid absolute URL", key))
+		}
+	}
 }
 
 func envOrDefault(key string, defaultValue string) string {

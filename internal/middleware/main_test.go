@@ -240,7 +240,7 @@ auth:
 	assert.Equal(t, username, authedUserId)
 }
 
-func TestMiddlewareBearerAuthFailure(t *testing.T) {
+func TestMiddlewareBearerInvalidToken(t *testing.T) {
 	as, _ := newAuthServer(t)
 	issuer := as.URL
 
@@ -270,6 +270,30 @@ auth:
 	assert.Equal(t, []string{`Bearer realm="egress"`}, wwwAuth)
 }
 
+func TestMiddlewareBearerInvalidAudience(t *testing.T) {
+	as, key := newAuthServer(t)
+	issuer := as.URL
+
+	initConfig(t, `
+auth:
+  bearer:
+    issuer_url: "`+issuer+`"
+    audience: "not-egress"
+`)
+	auth := authMiddleware()
+
+	ctx, rec, router := contextAndRecorder(t)
+	router.Use(gin.HandlerFunc(auth))
+	router.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "Ok")
+	})
+	token := signToken(t, key, issuer, audience, username)
+	ctx.Request.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(rec, ctx.Request)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestMiddlewareNoAuthHeader(t *testing.T) {
 	initConfig(t, `
 auth:
@@ -292,30 +316,6 @@ auth:
 	wwwAuth := rec.Result().Header.Values("WWW-Authenticate")
 	assert.Contains(t, wwwAuth, `Basic realm="egress"`)
 	assert.Contains(t, wwwAuth, `Bearer realm="egress"`)
-}
-
-func TestMiddlewareBearerAuthNoConfig(t *testing.T) {
-	as, key := newAuthServer(t)
-	issuer := as.URL
-
-	initConfig(t, `
-auth:
-  bearer:
-    issuer_url: ""
-    audience: ""
-`)
-	auth := authMiddleware()
-
-	ctx, rec, router := contextAndRecorder(t)
-	router.Use(gin.HandlerFunc(auth))
-	router.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Ok")
-	})
-	token := signToken(t, key, issuer, audience, username)
-	ctx.Request.Header.Set("Authorization", "Bearer "+token)
-	router.ServeHTTP(rec, ctx.Request)
-
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func initConfig(t *testing.T, yaml string) {
