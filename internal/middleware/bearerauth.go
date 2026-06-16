@@ -37,12 +37,14 @@ func bearerAuthenticator() authFunction {
 
 		claims, err := validator.ValidateToken(ctx, token)
 		if err != nil {
-			fail(ctx, []string{"Bearer"}, err.Error())
+			fail(ctx, []string{"Bearer"}, "could not validate token")
+			log.Error().Err(err).Msg("failed to validate bearer token")
 			return
 		}
 		validated, ok := claims.(*jwtv.ValidatedClaims)
 		if !ok {
-			fail(ctx, []string{"Bearer"}, "unexpected claims type")
+			fail(ctx, []string{"Bearer"}, "could not read token claims")
+			log.Error().Msg("failed to assert validated claims type")
 			return
 		}
 		// Save authenticated user ID (i.e. sub) to cross-check against
