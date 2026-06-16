@@ -529,7 +529,7 @@ func TestBearerAuth(t *testing.T) {
 }
 
 func TestBearerAuthUserIdMismatch(t *testing.T) {
-	fileId := "f1234"
+	fileId := "f1234" // Non-existent file
 	client := newHTTPClient()
 	token := mintBearerToken(t, tokenRequest{}) // sub = "egressuser"
 
@@ -560,16 +560,47 @@ func TestBearerAuthUserIdMismatch(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.method, tc.url, tc.body)
-			assert.NoError(t, err)
+			req := must(http.NewRequest(tc.method, tc.url, tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+token)
-			res, err := client.Do(req)
+			res := must(client.Do(req))
 
-			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 		})
 	}
+}
+
+func TestBearerAuthMissingUserId(t *testing.T) {
+	// Upload a file to storage
+	key := uuid.New()
+	fileContent := fmt.Sprintf("hello %s", key.String())
+	assert.NoError(t, storageProvider.PutFile(key.String(), fileContent))
+
+	// List files to get file-id of uploaded file
+	files := listFiles(t, projectId)
+	assert.True(t, len(files) > 0)
+
+	uploadedFile, exists := files.FileByFilename(key.String())
+	assert.True(t, exists)
+
+	fileId := uploadedFile.Id
+
+	// Approve file first so that it can be downloaded
+	approve(t, projectId, fileId, "user1", "world", "ok")
+
+	client := newHTTPClient()
+	token := mintBearerToken(t, tokenRequest{}) // sub = "egressuser"
+	req := must(http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+		// user_id is not provided
+		makeRequestBodyF(`{"required_approvals":1,"destination":"world","files_location":"%s","max_file_size":50}`, filesLocation),
+	))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	res := must(client.Do(req))
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
 func TestAuthWithNoAuthHeader(t *testing.T) {

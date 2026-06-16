@@ -106,7 +106,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		return
 	}
 	userId := optional(data.UserId)
-	if !validateBearerUserId(ctx, userId) {
+	if !matchUserIdWithBearerSub(ctx, &userId) {
 		return
 	}
 
@@ -183,7 +183,7 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
-	if !validateBearerUserId(ctx, data.UserId) {
+	if !matchUserIdWithBearerSub(ctx, &data.UserId) {
 		return
 	}
 	comment := optional(data.Comment)
@@ -208,7 +208,7 @@ func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId open
 		setBadRequest(ctx, "Failed to parse request body")
 		return
 	}
-	if !validateBearerUserId(ctx, data.UserId) {
+	if !matchUserIdWithBearerSub(ctx, &data.UserId) {
 		return
 	}
 	comment := optional(data.Comment)
@@ -238,19 +238,28 @@ func (h *Handler) Ping(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
 
-// Checks that the user_id is matches the `sub` claim from the Bearer
-// token (stored as "sub" in the Gin context) when Bearer auth is used
+// Checks that the user_id is matches the 'sub' claim from the Bearer
+// token (stored as "sub" in the Gin context) when Bearer auth is used.
+// If user_id is "" (i.e. optional), then 'sub' is assigned to user_id.
 // The check is skipped for Basic auth
-func validateBearerUserId(ctx *gin.Context, requestUserId string) bool {
+func matchUserIdWithBearerSub(ctx *gin.Context, userId *string) bool {
 	sub, exists := ctx.Get("sub")
 	if !exists { // Exists only for Bearer auth
 		return true
 	}
-	if uid := sub.(string); uid != requestUserId {
-		setBadRequest(ctx, "user_id does not match authenticated user")
+	subStr, ok := sub.(string)
+	if !ok {
 		return false
 	}
-	return true
+	if *userId == "" {
+		*userId = subStr
+		return true
+	}
+	if *userId == subStr {
+		return true
+	}
+	setBadRequest(ctx, "user_id does not match Bearer token sub")
+	return false
 }
 
 func optional(param *string) string {

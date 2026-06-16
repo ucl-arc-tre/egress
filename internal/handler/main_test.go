@@ -147,7 +147,7 @@ func TestGetFileId(t *testing.T) {
 			authUserId:         "user1",
 			body:               `{"files_location":"s:/bucket1","max_file_size":100,"destination":"trusted","required_approvals":0,"user_id":"badUser"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
+			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
 		},
 		{
 			name:               "bad location",
@@ -268,7 +268,7 @@ func TestApproveFileId(t *testing.T) {
 			authUserId:         "user1",
 			body:               `{"user_id":"badUser","destination":"trusted","comment":"good"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
+			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
 			expectedApprovals:  0,
 		},
 		{
@@ -338,7 +338,7 @@ func TestRejectFileId(t *testing.T) {
 			authUserId:         "user1",
 			body:               `{"user_id":"badUser","destination":"trusted","comment":"bad"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match authenticated user"}`,
+			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
 			expectedEvents:     0,
 		},
 		{
