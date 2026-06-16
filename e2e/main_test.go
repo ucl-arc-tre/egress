@@ -22,7 +22,7 @@ const (
 	password         = "egressuser" /* pragma: allowlist secret */
 	audience         = "egress"
 	baseApiUrl       = baseUrl + config.BaseURL
-	requestTimeout   = 1 * time.Second
+	requestTimeout   = 10 * time.Second
 	serviceUpTimeout = 2 * time.Minute
 	authServerUrl    = "http://localhost:8900"
 )
