@@ -62,9 +62,16 @@ db:
 
 # Auth configuration
 auth:
+  # Basic auth; both username and password are required
+  # DO NOT uncomment basic.username or basic.password below
   basic:
-    username: null
-    password: null
+    # username: null
+    # password: null
+  # Bearer auth; both issuer_url and audience are required
+  # DO NOT uncomment bearer.issuer_url or bearer.audience below
+  bearer:
+    # issuer_url: null
+    # audience: null
 
 # Service Account for IRSA. By default no ServiceAccount is created or referenced and
 # pods use the namespace's default ServiceAccount. Set `create: true` to create one, or

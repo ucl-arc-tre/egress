@@ -23,7 +23,12 @@ type RqliteConfig struct {
 	Password string // #nosec G117 -- read only from k8s Secret
 }
 
-type AuthBasicCredentialsBundle struct {
+type BasicAuthConfigBundle struct {
 	Username string
 	Password string // #nosec G117 -- read only from k8s Secret
+}
+
+type BearerAuthConfigBundle struct {
+	IssuerURL string
+	Audience  string
 }

@@ -79,7 +79,7 @@ db:
 	assert.Equal(t, "dbpassword123", db.Rqlite.Password)
 }
 
-func TestAuthBasicCredentials(t *testing.T) {
+func TestBasicAuthConfig(t *testing.T) {
 	yaml := `
 auth:
   basic:
@@ -89,9 +89,24 @@ auth:
 	cf := makeConfig(t, "basic-auth.yaml", yaml)
 	InitWithPath(cf)
 
-	auth := AuthBasicCredentials()
+	auth := BasicAuthConfig()
 	assert.Equal(t, "username123", auth.Username)
 	assert.Equal(t, "password123", auth.Password)
+}
+
+func TestBearerAuthConfig(t *testing.T) {
+	yaml := `
+auth:
+  bearer:
+    issuer_url: "http://example.com"
+    audience: "egress"
+`
+	cf := makeConfig(t, "bearer-auth.yaml", yaml)
+	InitWithPath(cf)
+
+	auth := BearerAuthConfig()
+	assert.Equal(t, "http://example.com", auth.IssuerURL)
+	assert.Equal(t, "egress", auth.Audience)
 }
 
 func makeConfig(t *testing.T, fileName string, yaml string) string {

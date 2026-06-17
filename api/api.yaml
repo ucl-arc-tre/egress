@@ -1,6 +1,6 @@
 openapi: '3.0.0'
 info:
-  version: 1.1.0
+  version: 1.2.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
@@ -10,6 +10,7 @@ servers:
   - url: /v1
 security:
   - basicAuth: []
+  - bearerAuth: []
 paths:
   /{project-id}/files:
     get:
@@ -136,6 +137,11 @@ components:
       type: http
       scheme: basic
       description: HTTP Basic authentication
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Auth using OIDC JWT tokens verified against a JWKS
 
   parameters:
     ProjectIdParam:

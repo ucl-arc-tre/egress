@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	BasicAuthScopes basicAuthContextKey = "basicAuth.Scopes"
+	BasicAuthScopes  basicAuthContextKey  = "basicAuth.Scopes"
+	BearerAuthScopes bearerAuthContextKey = "bearerAuth.Scopes"
 )
 
 // Defines values for EventAction.
@@ -179,6 +180,9 @@ type Unauthorized = ErrorResponse
 // basicAuthContextKey is the context key for basicAuth security scheme
 type basicAuthContextKey string
 
+// bearerAuthContextKey is the context key for bearerAuth security scheme
+type bearerAuthContextKey string
+
 // GetProjectIdFilesJSONRequestBody defines body for GetProjectIdFiles for application/json ContentType.
 type GetProjectIdFilesJSONRequestBody = ListFilesRequest
 
@@ -236,6 +240,8 @@ func (siw *ServerInterfaceWrapper) GetProjectIdEvents(c *gin.Context) {
 
 	c.Set(string(BasicAuthScopes), []string{})
 
+	c.Set(string(BearerAuthScopes), []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -262,6 +268,8 @@ func (siw *ServerInterfaceWrapper) GetProjectIdFiles(c *gin.Context) {
 	}
 
 	c.Set(string(BasicAuthScopes), []string{})
+
+	c.Set(string(BearerAuthScopes), []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -299,6 +307,8 @@ func (siw *ServerInterfaceWrapper) GetProjectIdFilesFileId(c *gin.Context) {
 
 	c.Set(string(BasicAuthScopes), []string{})
 
+	c.Set(string(BearerAuthScopes), []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -335,6 +345,8 @@ func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdApprove(c *gin.Context
 
 	c.Set(string(BasicAuthScopes), []string{})
 
+	c.Set(string(BearerAuthScopes), []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -370,6 +382,8 @@ func (siw *ServerInterfaceWrapper) PutProjectIdFilesFileIdReject(c *gin.Context)
 	}
 
 	c.Set(string(BasicAuthScopes), []string{})
+
+	c.Set(string(BearerAuthScopes), []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -420,32 +434,33 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
