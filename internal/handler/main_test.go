@@ -425,6 +425,7 @@ func TestGetEvents(t *testing.T) {
 	// Log the events
 	for _, e := range sourceEvents {
 		err := e.runner(types.ProjectId(projectId), e.fileId, e.userId, e.destination, e.comment)
+		time.Sleep(10 * time.Millisecond)
 		assert.NoError(t, err)
 	}
 
@@ -463,6 +464,8 @@ func TestGetEvents(t *testing.T) {
 
 	// Verify ordering of the events
 	for i := 1; i < len(events); i++ {
-		assert.True(t, events[i].Datetime.After(events[i-1].Datetime))
+		previousEventAt := events[i-1].Datetime
+		currentEventAt := events[i].Datetime
+		assert.True(t, currentEventAt.After(previousEventAt), fmt.Sprintf("%v was before %v", currentEventAt, previousEventAt))
 	}
 }
