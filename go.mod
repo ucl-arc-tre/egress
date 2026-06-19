@@ -17,6 +17,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/lestrrat-go/jwx/v3 v3.1.1
+	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.4.1
 	github.com/rqlite/gorqlite v0.0.0-20260504155303-50d445fd0ab9
 	github.com/rs/zerolog v1.35.1
@@ -57,6 +58,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect

@@ -71,6 +71,7 @@ func canListFiles() bool {
 	if err != nil {
 		return false
 	}
+	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
 	resp, err := newHTTPClient().Do(req)
 	return err == nil && resp.StatusCode == http.StatusOK
@@ -125,6 +126,14 @@ func TestEndpointResponseCodes(t *testing.T) {
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 			body:   strings.NewReader(`{"n}`),
+
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:   "GetFileNoBocyJson",
+			method: http.MethodGet,
+			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
+			body:   nil,
 
 			expectedStatusCode: http.StatusBadRequest,
 		},
@@ -643,6 +652,7 @@ func listFiles(t *testing.T, projectId string) PartialListFilesResponse {
 		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
 	req.SetBasicAuth(username, password)
+	req.Header.Set("Content-Type", "application/json")
 	res := must(client.Do(req))
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
@@ -724,6 +734,7 @@ func download(
 			comment,
 		),
 	))
+	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 
@@ -741,6 +752,7 @@ func makeRequest(t *testing.T) *http.Request {
 		fmt.Sprintf("%s/%s/files", baseApiUrl, projectId),
 		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
+	req.Header.Set("Content-Type", "application/json")
 	return req
 }
 
