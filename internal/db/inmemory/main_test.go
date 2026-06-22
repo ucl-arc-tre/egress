@@ -56,10 +56,10 @@ func TestMultipleApprovals(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, approvals[fileId], 1)
 
-	// Comment of first approval returned
+	// Comment of the latest approval is returned (issue #78)
 	assert.Equal(t, userId1, approvals[fileId][0].UserId)
 	assert.Equal(t, destTrusted, approvals[fileId][0].Destination)
-	assert.Equal(t, commentApprove1, approvals[fileId][0].Comment)
+	assert.Equal(t, commentApprove2, approvals[fileId][0].Comment)
 }
 
 func TestApproveToMultipleDestinations(t *testing.T) {
