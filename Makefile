@@ -127,14 +127,14 @@ dev-rqlite: ## Install rqlite for storing persistent state
 	  --set persistence.size=1Gi
 
 dev-storage: ## Deploy the storage server
-	docker buildx build -f e2e/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .
+	docker buildx build -f tools/storage-server/Dockerfile --tag $(DEV_STORAGE_IMAGE) --target release .
 	k3d image import $(DEV_STORAGE_IMAGE) -c $(K3D_CLUSTER_NAME)
-	kubectl apply -f e2e/storage-server/deploy.yaml
+	kubectl apply -f tools/storage-server/deploy.yaml
 
 dev-auth: ## Deploy the auth server
-	docker buildx build -f e2e/auth-server/Dockerfile --tag $(DEV_AUTH_IMAGE) --target release .
+	docker buildx build -f tools/auth-server/Dockerfile --tag $(DEV_AUTH_IMAGE) --target release .
 	k3d image import $(DEV_AUTH_IMAGE) -c $(K3D_CLUSTER_NAME)
-	kubectl apply -f e2e/auth-server/deploy.yaml
+	kubectl apply -f tools/auth-server/deploy.yaml
 
 dev-requirements:  ## Check if the dev requirements are satisfied
 	$(call assert_command_exists, go, "Please install go: https://go.dev/doc/install")
