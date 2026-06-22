@@ -130,7 +130,7 @@ func TestEndpointResponseCodes(t *testing.T) {
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
-			name:   "GetFileNoBocyJson",
+			name:   "GetFileNoBodyJson",
 			method: http.MethodGet,
 			url:    fmt.Sprintf("%s/%s/files/%s", baseApiUrl, projectId, fileId),
 			body:   nil,

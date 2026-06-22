@@ -10,7 +10,7 @@ import (
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 )
 
-func swagger() openapi.MiddlewareFunc {
+func swaggerMiddleware() openapi.MiddlewareFunc {
 	swagger, err := openapi.GetSpec()
 	if err != nil {
 		panic(fmt.Sprintf("Error loading swagger spec\n: %s", err))
