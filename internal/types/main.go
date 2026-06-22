@@ -59,25 +59,28 @@ func (fe FileEvents) Approvals() FileApprovals {
 		userId      UserId
 		destination Destination
 	}
-	filter := map[approvalKey]bool{}
-	order := []Approval{}
+	latest := map[approvalKey]Approval{}
+	approved := map[approvalKey]bool{}
+	order := []approvalKey{}
 
 	for _, e := range fe {
 		if e.Action != EventActionApproval && e.Action != EventActionRejection {
 			continue
 		}
 		key := approvalKey{userId: e.UserId, destination: e.Destination}
-		if _, got := filter[key]; !got {
-			order = append(order, Approval(e.EventDetails))
+		if _, seen := latest[key]; !seen {
+			order = append(order, key)
 		}
-		filter[key] = e.Action == EventActionApproval
+		// Keep the most recent details so the returned approval reflects the
+		// latest approval's comment, not the first one for this key
+		latest[key] = Approval(e.EventDetails)
+		approved[key] = e.Action == EventActionApproval
 	}
-	// Return filtered approvals in same the order as input
+	// Return filtered approvals in the same order as input
 	approvals := FileApprovals{}
-	for _, ap := range order {
-		key := approvalKey{userId: ap.UserId, destination: ap.Destination}
-		if filter[key] {
-			approvals = append(approvals, ap)
+	for _, key := range order {
+		if approved[key] {
+			approvals = append(approvals, latest[key])
 		}
 	}
 	return approvals
