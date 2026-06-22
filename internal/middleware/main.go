@@ -13,6 +13,7 @@ type authFunction func(*gin.Context)
 func All() []openapi.MiddlewareFunc {
 	return []openapi.MiddlewareFunc{
 		authMiddleware(),
+		swaggerMiddleware(),
 	}
 }
 
