@@ -1,6 +1,7 @@
 package types
 
 import (
+	"sort"
 	"time"
 )
 
@@ -52,8 +53,7 @@ type FileEvents []Event
 // Get approvals of a file
 // Multiple approvals with the same {UserId, Destination} are de-duplicated
 // A rejection that comes after an approval cancels that approval
-// Events must be chronologically ordered when this method is called and
-// the order is maintained in the filtered approval list
+// Events are sorted chronologically by Time before processing
 func (fe FileEvents) Approvals() FileApprovals {
 	type approvalKey struct {
 		userId      UserId
@@ -63,7 +63,13 @@ func (fe FileEvents) Approvals() FileApprovals {
 	approved := map[approvalKey]bool{}
 	order := []approvalKey{}
 
-	for _, e := range fe {
+	sorted := make(FileEvents, len(fe))
+	copy(sorted, fe)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].Time.Before(sorted[j].Time)
+	})
+
+	for _, e := range sorted {
 		if e.Action != EventActionApproval && e.Action != EventActionRejection {
 			continue
 		}
