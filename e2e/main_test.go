@@ -295,14 +295,14 @@ func TestMultipleApprovals(t *testing.T) {
 
 	// Approve file again with same {userId,destination}
 	// Approve is not idempotent, but approvals are deduped on
-	// {userId,desitnation}, so only 1 approval is returned
+	// {userId,destination}, so only 1 approval is returned, carrying the latest comment
 	approve(t, projectId, fileId, userId, destinationTrusted, commentApprove2)
 	files = listFiles(t, projectId)
 	approvedFile, _ = files.FileById(fileId)
 	assert.Len(t, approvedFile.Approvals, 1)
 	assert.Equal(t, userId, approvedFile.Approvals[0].UserId)
 	assert.Equal(t, destinationTrusted, approvedFile.Approvals[0].Destination)
-	assert.Equal(t, commentApprove1, approvedFile.Approvals[0].Comment)
+	assert.Equal(t, commentApprove2, approvedFile.Approvals[0].Comment)
 }
 
 func TestApproveToMultipleDestinations(t *testing.T) {

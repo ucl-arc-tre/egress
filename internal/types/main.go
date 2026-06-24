@@ -1,6 +1,7 @@
 package types
 
 import (
+	"sort"
 	"time"
 )
 
@@ -52,32 +53,40 @@ type FileEvents []Event
 // Get approvals of a file
 // Multiple approvals with the same {UserId, Destination} are de-duplicated
 // A rejection that comes after an approval cancels that approval
-// Events must be chronologically ordered when this method is called and
-// the order is maintained in the filtered approval list
+// Events are sorted chronologically by Time before processing
 func (fe FileEvents) Approvals() FileApprovals {
 	type approvalKey struct {
 		userId      UserId
 		destination Destination
 	}
-	filter := map[approvalKey]bool{}
-	order := []Approval{}
+	latest := map[approvalKey]Approval{}
+	approved := map[approvalKey]bool{}
+	order := []approvalKey{}
 
-	for _, e := range fe {
+	sorted := make(FileEvents, len(fe))
+	copy(sorted, fe)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].Time.Before(sorted[j].Time)
+	})
+
+	for _, e := range sorted {
 		if e.Action != EventActionApproval && e.Action != EventActionRejection {
 			continue
 		}
 		key := approvalKey{userId: e.UserId, destination: e.Destination}
-		if _, got := filter[key]; !got {
-			order = append(order, Approval(e.EventDetails))
+		if _, seen := latest[key]; !seen {
+			order = append(order, key)
 		}
-		filter[key] = e.Action == EventActionApproval
+		// Keep the most recent details so the returned approval reflects the
+		// latest approval's comment, not the first one for this key
+		latest[key] = Approval(e.EventDetails)
+		approved[key] = e.Action == EventActionApproval
 	}
-	// Return filtered approvals in same the order as input
+	// Return filtered approvals in the same order as input
 	approvals := FileApprovals{}
-	for _, ap := range order {
-		key := approvalKey{userId: ap.UserId, destination: ap.Destination}
-		if filter[key] {
-			approvals = append(approvals, ap)
+	for _, key := range order {
+		if approved[key] {
+			approvals = append(approvals, latest[key])
 		}
 	}
 	return approvals
