@@ -2,6 +2,7 @@ package types
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -88,6 +89,15 @@ func TestFileEvents_Approvals(t *testing.T) {
 				{UserId: user2, Destination: dest1, Comment: "u2d1-b"},
 			},
 		},
+		{
+			name: "events are chronologically ordered",
+			events: FileEvents{
+				// Approval happened after the rejection, but comes first in the slice
+				approveAt(user1, dest1, time.Unix(3, 0)),
+				rejectAt(user1, dest1, time.Unix(1, 0)),
+			},
+			expected: FileApprovals{{UserId: user1, Destination: dest1}},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -122,5 +132,21 @@ func rejectWithComment(user UserId, dest Destination, comment string) Event {
 	return Event{
 		Action:       EventActionRejection,
 		EventDetails: EventDetails{UserId: user, Destination: dest, Comment: comment},
+	}
+}
+
+func approveAt(user UserId, dest Destination, t time.Time) Event {
+	return Event{
+		Action:       EventActionApproval,
+		EventDetails: EventDetails{UserId: user, Destination: dest},
+		Time:         t,
+	}
+}
+
+func rejectAt(user UserId, dest Destination, t time.Time) Event {
+	return Event{
+		Action:       EventActionRejection,
+		EventDetails: EventDetails{UserId: user, Destination: dest},
+		Time:         t,
 	}
 }
