@@ -17,6 +17,8 @@ type Storage struct {
 	client ClientInterface
 }
 
+// This New constructor is called when the handler is
+// created, so no need to convert errors to ErrServer
 func New(s3Config config.S3StorageConfig) (*Storage, error) {
 	s3, err := newClient(s3Config)
 	if err != nil {
@@ -35,7 +37,7 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 	for objectPaginator.HasMorePages() {
 		output, err := objectPaginator.NextPage(ctx)
 		if err != nil {
-			return filesMetadata, types.NewErrServerF("failed to list [%w]", err)
+			return filesMetadata, types.NewErrServerF("failed to list objects [%w]", err)
 		}
 		for _, o := range output.Contents {
 			if o.Key == nil || o.ETag == nil || o.Size == nil || o.LastModified == nil {
