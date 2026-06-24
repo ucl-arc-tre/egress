@@ -18,6 +18,8 @@ type DB struct {
 	conn *rq.Connection
 }
 
+// This New constructor is called when the handler is
+// created, so no need to convert errors to ErrServer
 func New(baseURL, username, password string) (*DB, error) {
 	connURL, err := buildAuthURL(baseURL, username, password)
 	if err != nil {
@@ -89,11 +91,11 @@ func (db *DB) FileEvents(projectId types.ProjectId) (types.ProjectEvents, error)
 	for qr.Next() {
 		var fileId, userId, destination, action, comment, createdAt string
 		if err := qr.Scan(&fileId, &userId, &destination, &action, &comment, &createdAt); err != nil {
-			return nil, fmt.Errorf("[rqlite] failed to scan row: %w", err)
+			return nil, types.NewErrServerF("[rqlite] failed to scan row: %w", err)
 		}
 		dt, err := parseDatetime(createdAt)
 		if err != nil {
-			return nil, fmt.Errorf("[rqlite] failed to parse timestamp %q: %w", createdAt, err)
+			return nil, types.NewErrServerF("[rqlite] failed to parse timestamp %q: %w", createdAt, err)
 		}
 		event := types.Event{
 			Time:   dt,
