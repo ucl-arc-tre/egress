@@ -34,30 +34,34 @@ func TestGetFiles(t *testing.T) {
 		{
 			name:               "invalid body",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 		},
 		{
 			name:               "no s3 client",
 			body:               `{"files_location":"s3://bucket"}`,
 			expectedStatusCode: http.StatusInternalServerError,
+			expectedBody:       `{"message":"Failed to get list of files from storage"}`,
 		},
 		{
 			name:               "invalid location",
 			body:               `{"files_location":"://bucket"}`,
 			s3client:           s3.MockClient{},
 			expectedStatusCode: 520,
+			expectedBody:       `{"message":"Failed to parse file location"}`,
 		},
 		{
 			name:               "unknown file location",
 			body:               `{"files_location":"unknown://bucket"}`,
 			s3client:           s3.MockClient{},
 			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Failed to get list of files from storage"}`,
 		},
 		{
 			name:               "empty location",
 			body:               `{"files_location":""}`,
 			s3client:           s3.MockClient{},
 			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Failed to parse file location"}`,
 		},
 		{
 			name: "ok",
@@ -140,19 +144,20 @@ func TestGetFileId(t *testing.T) {
 		{
 			name:               "invalid body",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 		},
 		{
 			name:               "auth user missmatch",
 			authUserId:         "user1",
 			body:               `{"files_location":"s:/bucket1","max_file_size":100,"destination":"trusted","required_approvals":0,"user_id":"badUser"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
+			expectedBody:       `{"message":"The user_id field does not match token subject"}`,
 		},
 		{
 			name:               "bad location",
 			body:               `{"files_location":"s:/bucket1","max_file_size":100,"destination":"trusted","required_approvals":0}`,
 			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Failed to get file from storage"}`,
 		},
 		{
 			name: "no approvals",
@@ -193,7 +198,7 @@ func TestGetFileId(t *testing.T) {
 				},
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Size [11] was greater than max [1]"}`,
+			expectedBody:       `{"message":"File size 11 is greater than max_file_size 1"}`,
 		},
 		{
 			name:   "ok",
@@ -259,7 +264,7 @@ func TestApproveFileId(t *testing.T) {
 			name:               "invalid body",
 			fileId:             "etag1",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 			expectedApprovals:  0,
 		},
 		{
@@ -268,7 +273,7 @@ func TestApproveFileId(t *testing.T) {
 			authUserId:         "user1",
 			body:               `{"user_id":"badUser","destination":"trusted","comment":"good"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
+			expectedBody:       `{"message":"The user_id field does not match token subject"}`,
 			expectedApprovals:  0,
 		},
 		{
@@ -329,7 +334,7 @@ func TestRejectFileId(t *testing.T) {
 			name:               "invalid body",
 			fileId:             "etag1",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 			expectedEvents:     0,
 		},
 		{
@@ -338,7 +343,7 @@ func TestRejectFileId(t *testing.T) {
 			authUserId:         "user1",
 			body:               `{"user_id":"badUser","destination":"trusted","comment":"bad"}`,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. user_id does not match Bearer token sub"}`,
+			expectedBody:       `{"message":"The user_id field does not match token subject"}`,
 			expectedEvents:     0,
 		},
 		{

@@ -29,7 +29,7 @@ func TestGetFilesGeneric(t *testing.T) {
 		{
 			name:               "invalid body",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 		},
 		{
 			name: "list error",
@@ -38,18 +38,21 @@ func TestGetFilesGeneric(t *testing.T) {
 				ForceListErr: errors.New("server error"),
 			},
 			expectedStatusCode: http.StatusInternalServerError,
+			expectedBody:       `{"message":"Failed to get list of files from storage"}`,
 		},
 		{
 			name:               "invalid location",
 			body:               `{"files_location":"://bucket"}`,
 			genericClient:      generic.MockClient{},
 			expectedStatusCode: 520,
+			expectedBody:       `{"message":"Failed to parse file location"}`,
 		},
 		{
 			name:               "missing location",
 			body:               `{"files_location":""}`,
 			genericClient:      generic.MockClient{},
 			expectedStatusCode: http.StatusBadRequest,
+			expectedBody:       `{"message":"Failed to parse file location"}`,
 		},
 		{
 			name: "ok",
@@ -124,7 +127,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 		{
 			name:               "invalid body",
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Invalid object. Failed to parse request body"}`,
+			expectedBody:       `{"message":"Failed to parse request body"}`,
 		},
 		{
 			name:   "list error on get",
@@ -134,6 +137,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 				ForceListErr: errors.New("server error"),
 			},
 			expectedStatusCode: http.StatusInternalServerError,
+			expectedBody:       `{"message":"Failed to get file from storage"}`,
 		},
 		{
 			name: "no approvals",
@@ -168,7 +172,7 @@ func TestGetFileIdGeneric(t *testing.T) {
 				Files: []generic.MockFile{genericFile1},
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedBody:       `{"message":"Size [11] was greater than max [1]"}`,
+			expectedBody:       `{"message":"File size 11 is greater than max_file_size 1"}`,
 		},
 		{
 			name:   "ok",
