@@ -17,8 +17,8 @@ type Storage struct {
 	client ClientInterface
 }
 
-// This New constructor is called when the handler is
-// created, so no need to convert errors to ErrServer
+// This New constructor is called when the handler is created, which panics
+// if New returns an error. Therefore, errors are not wrapped in ErrServer
 func New(s3Config config.S3StorageConfig) (*Storage, error) {
 	s3, err := newClient(s3Config)
 	if err != nil {

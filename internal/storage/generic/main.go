@@ -21,7 +21,8 @@ type Storage struct {
 
 // Uses a single reusable http.Client for all requests while mTLS auth
 // is handled at the transport layer. This New constructor is called when
-// the handler is created, so no need to convert errors to ErrServer
+// the handler is created which panics if New returns an error. Therefore,
+// errors are not wrapped in ErrServer
 func New(tlsCertDir string) (*Storage, error) {
 	transport, err := newMTLSTransport(tlsCertDir)
 	if err != nil {

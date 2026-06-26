@@ -18,8 +18,8 @@ type DB struct {
 	conn *rq.Connection
 }
 
-// This New constructor is called when the handler is
-// created, so no need to convert errors to ErrServer
+// This New constructor is called when the handler is created, which panics
+// if New returns an error. Therefore, errors are not wrapped in ErrServer
 func New(baseURL, username, password string) (*DB, error) {
 	connURL, err := buildAuthURL(baseURL, username, password)
 	if err != nil {
