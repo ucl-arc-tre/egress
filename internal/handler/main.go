@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,8 +66,7 @@ func (h *Handler) GetProjectIdEvents(ctx *gin.Context, projectId openapi.Project
 func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectIdParam) {
 	data := openapi.ListFilesRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
-		log.Err(err).Any("projectId", projectId).Msg("Failed to bind request json")
-		setBadRequest(ctx, "Failed to parse request body")
+		setBadRequest(ctx, projectId, err, "Failed to parse request body")
 		return
 	}
 
@@ -101,12 +101,12 @@ func (h *Handler) GetProjectIdFiles(ctx *gin.Context, projectId openapi.ProjectI
 func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
 	data := openapi.DownloadFileRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
-		log.Err(err).Any("projectId", projectId).Any("fileId", fileId).Msg("Failed to bind download request json")
-		setBadRequest(ctx, "Failed to parse request body")
+		setBadRequest(ctx, projectId, err, "Failed to parse request body")
 		return
 	}
 	userId := optional(data.UserId)
-	if !matchUserIdWithBearerSub(ctx, &userId) {
+	if err := matchUserIdWithBearerSub(ctx, &userId); err != nil {
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 
@@ -122,10 +122,9 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 	}
 	destApprovals := fileApprovals.ForDestination(types.Destination(data.Destination))
 	if numApprovals := len(destApprovals); numApprovals < data.RequiredApprovals {
-		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
-			Message: fmt.Sprintf("Required %d approvals for destination %s but only had %d",
-				data.RequiredApprovals, string(data.Destination), numApprovals),
-		})
+		setBadRequest(ctx, projectId, nil,
+			fmt.Sprintf("Required %d approvals for destination %s but only had %d",
+				data.RequiredApprovals, string(data.Destination), numApprovals))
 		return
 	}
 
@@ -146,9 +145,9 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 		}
 	}()
 	if file.Size > int64(data.MaxFileSize) {
-		ctx.JSON(http.StatusBadRequest, openapi.BadRequest{
-			Message: fmt.Sprintf("Size [%d] was greater than max [%d]", file.Size, data.MaxFileSize),
-		})
+		setBadRequest(ctx, projectId, nil,
+			fmt.Sprintf("File size %d is greater than max_file_size %d",
+				file.Size, data.MaxFileSize))
 		return
 	}
 
@@ -179,11 +178,11 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
 	data := openapi.ApproveFileRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
-		log.Err(err).Any("projectId", projectId).Msg("Failed to bind approve file json")
-		setBadRequest(ctx, "Failed to parse request body")
+		setBadRequest(ctx, projectId, err, "Failed to parse request body")
 		return
 	}
-	if !matchUserIdWithBearerSub(ctx, &data.UserId) {
+	if err := matchUserIdWithBearerSub(ctx, &data.UserId); err != nil {
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 	comment := optional(data.Comment)
@@ -204,11 +203,11 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId openapi.ProjectIdParam, fileId openapi.FileIdParam) {
 	data := openapi.RejectFileRequest{}
 	if err := ctx.BindJSON(&data); err != nil {
-		log.Err(err).Any("projectId", projectId).Msg("Failed to bind reject file json")
-		setBadRequest(ctx, "Failed to parse request body")
+		setBadRequest(ctx, projectId, err, "Failed to parse request body")
 		return
 	}
-	if !matchUserIdWithBearerSub(ctx, &data.UserId) {
+	if err := matchUserIdWithBearerSub(ctx, &data.UserId); err != nil {
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 	comment := optional(data.Comment)
@@ -241,25 +240,24 @@ func (h *Handler) Ping(ctx *gin.Context) {
 // Checks that the user_id matches the `sub` claim from the Bearer
 // token (stored as "sub" in the Gin context) when Bearer auth is used.
 // If user_id is "" (i.e. optional), then 'sub' is assigned to user_id.
-// The check is skipped for Basic auth
-func matchUserIdWithBearerSub(ctx *gin.Context, userId *string) bool {
+// The check is skipped for Basic auth, i.e. when "sub" is not present
+func matchUserIdWithBearerSub(ctx *gin.Context, userId *string) error {
 	sub, exists := ctx.Get("sub")
 	if !exists { // Exists only for Bearer auth
-		return true
+		return nil
 	}
 	subStr, ok := sub.(string)
 	if !ok {
-		return false
+		return errors.New("sub claim is not a string")
 	}
 	if *userId == "" {
 		*userId = subStr
-		return true
+		return nil
 	}
 	if *userId == subStr {
-		return true
+		return nil
 	}
-	setBadRequest(ctx, "user_id does not match Bearer token sub")
-	return false
+	return types.NewErrInvalidObjectF("user_id %s differs from token sub %s", *userId, subStr)
 }
 
 func optional(param *string) string {

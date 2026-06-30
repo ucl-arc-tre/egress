@@ -19,8 +19,10 @@ type Storage struct {
 	getter apiClientGetter
 }
 
-// Uses a single reusable http.Client for all requests
-// mTLS auth is handled at the transport layer
+// Uses a single reusable http.Client for all requests while mTLS auth
+// is handled at the transport layer. This New constructor is called when
+// the handler is created which panics if New returns an error. Therefore,
+// errors are not wrapped in ErrServer
 func New(tlsCertDir string) (*Storage, error) {
 	transport, err := newMTLSTransport(tlsCertDir)
 	if err != nil {
@@ -50,7 +52,7 @@ func (s *Storage) List(ctx context.Context, location types.LocationURI) ([]types
 	case http.StatusOK: // Handled after switch
 	case http.StatusBadRequest:
 		m := extractResponseMessageOrDefault(resp.JSON400, "bad request")
-		return nil, types.NewErrInvalidObjectF("%s: %s", errmsg, m)
+		return nil, types.NewErrServerF("%s: %s", errmsg, m)
 	default:
 		m := extractResponseMessageOrDefault(resp.JSON500, "unexpected error")
 		return nil, types.NewErrServerF("%s: %s (status %d)", errmsg, m, resp.StatusCode())

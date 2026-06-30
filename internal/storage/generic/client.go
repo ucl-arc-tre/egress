@@ -26,7 +26,7 @@ func (g *httpAPIClientGetter) Get(location types.LocationURI) (ClientWithRespons
 }
 
 // Creates a storage API client using the generated
-// code and the provided http.Client
+// code and the provided http.Client object
 func newAPIClient(location types.LocationURI, http *http.Client) (*ClientWithResponses, error) {
 	serverURL, err := locationToServerURL(location)
 	if err != nil {
