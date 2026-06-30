@@ -106,7 +106,7 @@ func (h *Handler) GetProjectIdFilesFileId(ctx *gin.Context, projectId openapi.Pr
 	}
 	userId := optional(data.UserId)
 	if err := matchUserIdWithBearerSub(ctx, &userId); err != nil {
-		setBadRequest(ctx, projectId, err, "The user_id field does not match token subject")
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *Handler) PutProjectIdFilesFileIdApprove(ctx *gin.Context, projectId ope
 		return
 	}
 	if err := matchUserIdWithBearerSub(ctx, &data.UserId); err != nil {
-		setBadRequest(ctx, projectId, err, "The user_id field does not match token subject")
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 	comment := optional(data.Comment)
@@ -207,7 +207,7 @@ func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId open
 		return
 	}
 	if err := matchUserIdWithBearerSub(ctx, &data.UserId); err != nil {
-		setBadRequest(ctx, projectId, err, "The user_id field does not match token subject")
+		setError(ctx, projectId, err, "The user_id field does not match token subject")
 		return
 	}
 	comment := optional(data.Comment)
@@ -257,7 +257,7 @@ func matchUserIdWithBearerSub(ctx *gin.Context, userId *string) error {
 	if *userId == subStr {
 		return nil
 	}
-	return fmt.Errorf("user_id %s differs from token sub %s", *userId, subStr)
+	return types.NewErrInvalidObjectF("user_id %s differs from token sub %s", *userId, subStr)
 }
 
 func optional(param *string) string {
