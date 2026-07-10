@@ -11,19 +11,23 @@ concurrency:
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # version 7.0.0
         with:
-          python-version: "3.13"
+          persist-credentials: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # version 6.3.0, See: https://github.com/actions/setup-python/releases
         with:
-          go-version: "1.25"
+          python-version: '3.13'
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # version 6.5.0, See: https://github.com/actions/setup-go/releases
+        with:
+          go-version: '1.25'
 
       - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # version 3.0.1, See: https://github.com/pre-commit/action/releases
         with:
           extra_args: --all-files

@@ -1,15 +1,30 @@
 version: 2
 updates:
-  - package-ecosystem: gomod
-    directory: /
+  - package-ecosystem: 'github-actions'
+    directory: '.github/workflows'
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
+    cooldown:
+      default-days: 7
     groups:
       dependencies:
         patterns:
-          - "*"
+          - '*'
 
-  - package-ecosystem: "docker"
+  - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
+    cooldown:
+      default-days: 7
+    groups:
+      dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'docker'
+    directory: /
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: 'monthly'
