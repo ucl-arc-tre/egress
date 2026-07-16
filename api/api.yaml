@@ -10,6 +10,8 @@ servers:
   - url: /v1
 security:
   - mTLS: []
+    bearerAuth: []
+  - mTLS: []
   - bearerAuth: []
 paths:
   /{project-id}/files:

@@ -65,7 +65,7 @@ test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage dev-auth ## 
 	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-generic.yaml egress ./chart
 	STORAGE_PROVIDER="generic" go test ./e2e/... -count=1
 
-dev: dev-requirements dev-k3d dev-rustfs dev-rqlite ## Deploy dev env
+dev: dev-requirements dev-k3d dev-rustfs dev-rqlite dev-certmanager ## Deploy dev env
 	docker buildx build --tag $(DEV_IMAGE) --target dev .
 	k3d image import $(DEV_IMAGE) -c $(K3D_CLUSTER_NAME)
 	$(MAKE) dev-helm

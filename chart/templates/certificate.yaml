@@ -28,10 +28,8 @@ spec:
     name: {{ required "storage.generic.tls.issuerName is required" .Values.storage.generic.tls.issuerName }}
     kind: ClusterIssuer
 {{- end }}
-
 ---
-
-{{- if .Values.auth.mTLS.enabled -}}
+{{ if .Values.auth.mTLS.enabled -}}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
