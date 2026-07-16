@@ -19,7 +19,7 @@ service:
 dev:
   hot_reload: true
   s3:
-    url: "http://rustfs-svc.rustfs.svc.cluster.local:9000"
+    url: 'http://rustfs-svc.rustfs.svc.cluster.local:9000'
     bucket: bucket1
 
 debug: true
@@ -39,6 +39,9 @@ db:
     password: dbuser # pragma: allowlist secret
 
 auth:
-  basic:
-    username: egressuser
-    password: egressuser # pragma: allowlist secret
+  mTLS:
+    enabled: true
+    issuerName: ca-issuer
+    certManager:
+      duration: 2h
+      renewBefore: 1h

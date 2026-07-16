@@ -9,7 +9,7 @@ info:
 servers:
   - url: /v1
 security:
-  - basicAuth: []
+  - mTLS: []
   - bearerAuth: []
 paths:
   /{project-id}/files:
@@ -141,10 +141,9 @@ paths:
 
 components:
   securitySchemes:
-    basicAuth:
-      type: http
-      scheme: basic
-      description: HTTP Basic authentication
+    mTLS:
+      type: mutualTLS
+      description: Mutual TLS (certificate authentication at the transport layer)
     bearerAuth:
       type: http
       scheme: bearer

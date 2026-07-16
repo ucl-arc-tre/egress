@@ -46,16 +46,28 @@ spec:
           env:
             - name: DEBUG
               value: "{{ .Values.debug }}"
-            - name: PORT
-              value: "{{ template "container_port" . }}"
+            - name: HTTP_PORT
+              value: "{{ template "http_container_port" . }}"
+            {{- if .Values.auth.mTLS.enabled }}
+            - name: HTTPS_PORT
+              value: "{{ template "https_container_port" . }}"
+            {{ end }}
           ports:
             - name: http
-              containerPort: {{ template "container_port" . }}
+              containerPort: {{ template "http_container_port" . }}
               protocol: TCP
+            {{- if .Values.auth.mTLS }}
+            - name: https
+              containerPort: {{ template "https_container_port" . }}
+              protocol: TCP
+            {{ end }}
           livenessProbe:
             httpGet:
               path: /ping
               port: http
+            {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
+            failureThreshold: 10
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /ready
@@ -65,8 +77,13 @@ spec:
               mountPath: /etc/egress
               readOnly: true
           {{- if eq .Values.storage.provider "generic" }}
+            - name: tls-storage-generic
+              mountPath: {{ template "storage_generic_mtls_dir" . }}
+              readOnly: true
+          {{- end }}
+          {{- if .Values.auth.mTLS.enabled }}
             - name: tls
-              mountPath: /etc/egress/tls
+              mountPath: {{ template "mtls_dir" . }}
               readOnly: true
           {{- end }}
           {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
@@ -85,10 +102,15 @@ spec:
         - name: config
           secret:
             secretName: {{ $name }}-config
-      {{- if eq .Values.storage.provider "generic" }}
+      {{- if .Values.auth.mTLS.enabled }}
         - name: tls
           secret:
             secretName: {{ $name }}-tls-secret
+      {{- end }}
+      {{- if eq .Values.storage.provider "generic" }}
+        - name: tls-storage-generic
+          secret:
+            secretName: {{ $name }}-storage-generic-tls-secret
       {{- end }}
       {{- if and (hasKey .Values "dev") .Values.dev.hot_reload }}
         - name: repo

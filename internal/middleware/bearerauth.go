@@ -17,7 +17,17 @@ const tokenCacheDuration = 5 * time.Minute
 // Closure for authenticating HTTP Bearer
 func bearerAuthenticator() authFunction {
 	cfg := config.BearerAuthConfig()
-	issuer, _ := url.Parse(cfg.IssuerURL) // Issuer url has already been validated
+
+	if cfg.IssuerURL == "" {
+		log.Warn().Msg("auth bearer issuerURL is unset")
+		return nil
+	}
+
+	issuer, err := url.Parse(cfg.IssuerURL) // Issuer url has already been validated
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse IssuerURL")
+		return nil
+	}
 
 	provider := jwks.NewCachingProvider(issuer, tokenCacheDuration)
 	validator, err := jwtv.New(

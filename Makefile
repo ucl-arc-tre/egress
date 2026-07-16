@@ -9,7 +9,7 @@ DEV_IMAGE := "localhost/ucl-arc-tre-egress:dev"
 RELEASE_IMAGE := "localhost/ucl-arc-tre-egress:release"
 
 DEV_NODEPORT := 30001
-DEV_EXTERNAL_PORT := 8080
+DEV_EXTERNAL_PORT := 8443
 
 DEV_RUSTFS_NODEPORT := 32000
 DEV_RUSTFS_EXTERNAL_PORT := 8081
@@ -52,6 +52,13 @@ test-e2e: dev-k3d dev-certmanager dev-rustfs dev-rqlite dev-storage dev-auth ## 
 	# s3 storage
 	echo -e "\033[33mRunning e2e tests with s3 provider...\033[0m"
 	helm upgrade --install --create-namespace -n e2e --wait -f e2e/values-s3.yaml egress ./chart
+
+	kubectl apply -f e2e/deploy.yaml
+	kubectl wait --for=condition=Ready certificate/egress-client -n e2e --timeout=60s
+	kubectl get secret egress-client-tls-secret -n e2e -o go-template='{{index .data "tls.crt"}}' | base64 --decode > e2e/tls/tls.crt
+	kubectl get secret egress-client-tls-secret -n e2e -o go-template='{{index .data "tls.key"}}' | base64 --decode > e2e/tls/tls.key
+	kubectl get secret egress-client-tls-secret -n e2e -o go-template='{{index .data "ca.crt"}}' | base64 --decode > e2e/tls/ca.crt
+
 	STORAGE_PROVIDER="s3" go test ./e2e/... -count=1
 	# generic storage
 	echo -e "\033[33mRunning e2e tests with generic storage provider...\033[0m"

@@ -44,8 +44,7 @@ storage:
     # Requires cert-manager to be already available in the cluster
     tls:
       # Overrides the Certificate issuerRef.name (cert-manager ClusterIssuer).
-      # Defaults to "ca-issuer"
-      issuerName: "ca-issuer"
+      issuerName: 'ca-issuer'
       certManager:
         duration: null
         renewBefore: null
@@ -62,16 +61,19 @@ db:
 
 # Auth configuration
 auth:
-  # Basic auth; both username and password are required
-  # DO NOT uncomment basic.username or basic.password below
-  basic:
-    # username: null
-    # password: null
-  # Bearer auth; both issuer_url and audience are required
-  # DO NOT uncomment bearer.issuer_url or bearer.audience below
+  # Bearer auth; if enabled both issuer_url and audience are required
   bearer:
-    # issuer_url: null
-    # audience: null
+    enabled: false
+    issuer_url: null
+    audience: null
+  # Mutual TLS with certmanager certificate rotation
+  mTLS:
+    enabled: false
+    issuerName: null
+    certManager:
+      duration: null
+      renewBefore: null
+      additionalDNSNames: []
 
 # Service Account for IRSA. By default no ServiceAccount is created or referenced and
 # pods use the namespace's default ServiceAccount. Set `create: true` to create one, or

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,9 +20,7 @@ import (
 )
 
 const (
-	baseUrl          = "http://localhost:8080"
-	username         = "egressuser"
-	password         = "egressuser" /* pragma: allowlist secret */
+	baseUrl          = "https://localhost:8443"
 	audience         = "egress"
 	baseApiUrl       = baseUrl + config.BaseURL
 	requestTimeout   = 10 * time.Second
@@ -51,16 +52,34 @@ func init() {
 		if canPing() && canListFiles() {
 			return
 		}
+		fmt.Println("waiting for server ready")
 		time.Sleep(2 * time.Second)
 	}
 }
 
 func newHTTPClient() *http.Client {
-	return &http.Client{Timeout: requestTimeout}
+	caCert, err := os.ReadFile("tls/ca.crt")
+	if err != nil {
+		panic(err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	cert, _ := tls.LoadX509KeyPair("tls/tls.crt", "tls/tls.key")
+	client := http.Client{Timeout: requestTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
+			},
+		},
+	}
+	return &client
 }
 
 func canPing() bool {
-	res, err := http.Get(baseUrl + "/ping")
+	client := newHTTPClient()
+	res, err := client.Get(baseUrl + "/ping")
 	return err == nil && res.StatusCode == http.StatusOK
 }
 
@@ -72,7 +91,6 @@ func canListFiles() bool {
 		return false
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
 	resp, err := newHTTPClient().Do(req)
 	return err == nil && resp.StatusCode == http.StatusOK
 }
@@ -170,7 +188,6 @@ func TestEndpointResponseCodes(t *testing.T) {
 			if tc.body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
-			req.SetBasicAuth(username, password)
 			res, err := client.Do(req)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
@@ -470,39 +487,6 @@ func TestEventsOfEgressActions(t *testing.T) {
 	assert.Equal(t, commentDownload, *download.Comment)
 }
 
-func TestBasicAuth(t *testing.T) {
-	tests := []struct {
-		name           string
-		username       string
-		password       string
-		expectedStatus int
-	}{
-		// Basic auth with valid creds is used in other tests
-		{
-			name:           "Incorrect username",
-			username:       "badUsername",
-			password:       password,
-			expectedStatus: http.StatusUnauthorized,
-		},
-		{
-			name:           "Incorrect password",
-			username:       username,
-			password:       "badPassword",
-			expectedStatus: http.StatusUnauthorized,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			client := newHTTPClient()
-			req := makeRequest(t)
-			req.SetBasicAuth(tc.username, tc.password)
-			res := must(client.Do(req))
-
-			assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
-		})
-	}
-}
-
 func TestBearerAuth(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -617,7 +601,7 @@ func TestAuthWithNoAuthHeader(t *testing.T) {
 	req := makeRequest(t)
 	res := must(client.Do(req))
 
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+	assert.Equal(t, http.StatusOK, res.StatusCode, "expecting OK with mtls")
 }
 
 func listEvents(t *testing.T, projectId string) openapi.EventListResponse {
@@ -630,7 +614,6 @@ func listEvents(t *testing.T, projectId string) openapi.EventListResponse {
 		eventsUrl,
 		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
-	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
@@ -651,7 +634,6 @@ func listFiles(t *testing.T, projectId string) PartialListFilesResponse {
 		listUrl,
 		makeRequestBodyF(`{"files_location": "%s"}`, filesLocation),
 	))
-	req.SetBasicAuth(username, password)
 	req.Header.Set("Content-Type", "application/json")
 	res := must(client.Do(req))
 	require.Equal(t, http.StatusOK, res.StatusCode)
@@ -682,7 +664,6 @@ func approve(
 			userId, destination, comment),
 	))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 }
@@ -706,7 +687,6 @@ func reject(
 			userId, destination, comment),
 	))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 }
@@ -735,7 +715,6 @@ func download(
 		),
 	))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(username, password)
 	res := must(client.Do(req))
 
 	var content []byte
