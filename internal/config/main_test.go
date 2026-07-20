@@ -106,6 +106,19 @@ auth:
 	assert.Equal(t, "egress", auth.Audience)
 }
 
+func TestBasicAuthConfig(t *testing.T) {
+	initTestConfig(t, "basic-auth.yaml", `
+auth:
+  basic:
+    username: "username123"
+    password: "password123"
+`)
+
+	auth := BasicAuthConfig()
+	assert.Equal(t, "username123", auth.Username)
+	assert.Equal(t, "password123", auth.Password)
+}
+
 func initTestConfig(t *testing.T, fileName string, yaml string) {
 	dir := t.TempDir()
 	configFilepath := filepath.Join(dir, fileName)

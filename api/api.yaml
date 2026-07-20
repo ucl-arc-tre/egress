@@ -13,6 +13,7 @@ security:
     bearerAuth: []
   - mTLS: []
   - bearerAuth: []
+  - basicAuth: []
 paths:
   /{project-id}/files:
     get:
@@ -143,6 +144,10 @@ paths:
 
 components:
   securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: HTTP Basic authentication
     mTLS:
       type: mutualTLS
       description: Mutual TLS (certificate authentication at the transport layer)

@@ -104,6 +104,13 @@ func DBConfig() DBConfigBundle {
 	return cfg
 }
 
+func BasicAuthConfig() BasicAuthConfigBundle {
+	return BasicAuthConfigBundle{
+		Username: k.String("auth.basic.username"),
+		Password: k.String("auth.basic.password"),
+	}
+}
+
 func BearerAuthConfig() BearerAuthConfigBundle {
 	return BearerAuthConfigBundle{
 		IssuerURL: k.String("auth.bearer.issuer_url"),

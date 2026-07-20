@@ -19,6 +19,7 @@ func All() []openapi.MiddlewareFunc {
 }
 
 func authMiddleware() openapi.MiddlewareFunc {
+	basicAuth := basicAuthenticator()
 	bearerAuth := bearerAuthenticator()
 	mtlsAuth := func(*gin.Context) {} // no-op auth handled at the transport layer
 
@@ -27,10 +28,12 @@ func authMiddleware() openapi.MiddlewareFunc {
 		authHeader := ctx.GetHeader("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			auth = bearerAuth
+		} else if strings.HasPrefix(authHeader, "Basic ") {
+			auth = basicAuth
 		} else if config.MutualTLSEnabled() {
 			auth = mtlsAuth
 		} else {
-			fail(ctx, []string{"Bearer"}, "authentication required")
+			fail(ctx, []string{"Basic", "Bearer"}, "authentication required")
 			return
 		}
 		if auth == nil {

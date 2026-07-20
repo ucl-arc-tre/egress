@@ -61,6 +61,11 @@ db:
 
 # Auth configuration
 auth:
+  # HTTP basic auth
+  basic:
+    enabled: false
+    username: null # MUST be changed if enabled
+    password: null # MUST be changed if enabled
   # Bearer auth; if enabled both issuer_url and audience are required
   bearer:
     enabled: false
