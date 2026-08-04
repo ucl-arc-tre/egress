@@ -25,7 +25,7 @@ func main() {
 			ReadHeaderTimeout: 1 * time.Second,
 		}
 		log.Info().Str("addr", server.Addr).Msg("Starting health server")
-		go listenAndServe(server)
+		go graceful.Serve(server, 1*time.Second)
 	}
 
 	handler := handler.New()
@@ -47,12 +47,5 @@ func main() {
 		graceful.ServeTLS(server, config.ServerShutdownDuration)
 	} else {
 		graceful.Serve(server, config.ServerShutdownDuration)
-	}
-
-}
-
-func listenAndServe(server *http.Server) {
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal().Err(err).Msg("failed to serve")
 	}
 }

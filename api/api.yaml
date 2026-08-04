@@ -1,6 +1,6 @@
-openapi: '3.0.0'
+openapi: '3.1.0'
 info:
-  version: 1.3.0
+  version: 1.4.0
   title: ucl-arc-tre-egress
   description: UCL ARC TRE Egress API
   license:
@@ -9,11 +9,11 @@ info:
 servers:
   - url: /v1
 security:
-  - mTLS: []
+  - mTLS: [] # mTLS + bearer
     bearerAuth: []
-  - mTLS: []
-  - bearerAuth: []
-  - basicAuth: []
+  - mTLS: [] # mTLS only
+  - bearerAuth: [] # bearer only
+  - basicAuth: [] # basic only
 paths:
   /{project-id}/files:
     get:

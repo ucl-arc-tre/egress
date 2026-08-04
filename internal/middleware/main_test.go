@@ -30,6 +30,57 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
+func TestBasicAuthValidCreds(t *testing.T) {
+	initConfig(t, `
+auth:
+  basic:
+    username: "`+username+`"
+    password: "`+password+`"
+`)
+	ctx, rec, _ := contextAndRecorder(t)
+	ctx.Request.SetBasicAuth(username, password)
+
+	basic := basicAuthenticator()
+	require.NotNil(t, basic)
+	basic(ctx)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "", ctx.GetString("sub")) // Basic auth doesnt set sub
+}
+
+func TestBasicAuthInvalidCreds(t *testing.T) {
+	initConfig(t, `
+auth:
+  basic:
+    username: "`+username+`"
+    password: "`+password+`"
+`)
+	ctx, rec, _ := contextAndRecorder(t)
+	ctx.Request.SetBasicAuth(username, "blah")
+
+	basic := basicAuthenticator()
+	require.NotNil(t, basic)
+	basic(ctx)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestBasicAuthMissingHeader(t *testing.T) {
+	initConfig(t, `
+auth:
+  basic:
+    username: "`+username+`"
+    password: "`+password+`"
+`)
+	ctx, rec, _ := contextAndRecorder(t)
+
+	basic := basicAuthenticator()
+	require.NotNil(t, basic)
+	basic(ctx)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestBearerAuthValidToken(t *testing.T) {
 	as, key := newAuthServer(t)
 	issuer := as.URL
