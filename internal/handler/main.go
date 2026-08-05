@@ -225,16 +225,19 @@ func (h *Handler) PutProjectIdFilesFileIdReject(ctx *gin.Context, projectId open
 	ctx.Status(http.StatusNoContent)
 }
 
-func (h *Handler) Ready(ctx *gin.Context) {
-	if !h.db.IsReady() {
+func (h *Handler) Ready(ctx *gin.Context) { ready(ctx, h.db) }
+func (h *Handler) Ping(ctx *gin.Context)  { ping(ctx) }
+
+func ping(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
+}
+
+func ready(ctx *gin.Context, db db.Interface) {
+	if !db.IsReady() {
 		ctx.Status(http.StatusServiceUnavailable)
 		return
 	}
 	ctx.Status(http.StatusOK)
-}
-
-func (h *Handler) Ping(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
 
 // Checks that the user_id matches the `sub` claim from the Bearer

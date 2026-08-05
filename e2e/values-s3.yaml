@@ -13,7 +13,7 @@ debug: true
 
 dev:
   s3:
-    url: "http://rustfs-svc.rustfs.svc.cluster.local:9000"
+    url: 'http://rustfs-svc.rustfs.svc.cluster.local:9000'
     bucket: bucket1
 
 storage:
@@ -31,9 +31,14 @@ db:
     password: dbuser # pragma: allowlist secret
 
 auth:
-  basic:
-    username: egressuser
-    password: egressuser # pragma: allowlist secret
+  mTLS:
+    enabled: true
+    issuerName: ca-issuer
+    certManager:
+      duration: 2h
+      renewBefore: 1h
+      additionalDNSNames: ['localhost']
   bearer:
-    issuer_url: "http://auth-server.auth.svc.cluster.local:8900"
-    audience: "egress"
+    enabled: true
+    issuer_url: 'http://auth-server.auth.svc.cluster.local:8900'
+    audience: 'egress'

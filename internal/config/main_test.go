@@ -11,34 +11,53 @@ import (
 )
 
 func TestServerAddressSetPort(t *testing.T) {
-	t.Setenv("PORT", "1234")
+	initTestConfig(t, "test.yaml", `
+auth:
+  mTLS:
+    dir: null
+`)
+	t.Setenv("HTTP_PORT", "1234")
+	t.Setenv("HTTPS_PORT", "1235")
 	assert.Equal(t, ":1234", ServerAddress())
+
+	initTestConfig(t, "test.yaml", `
+auth:
+  mTLS:
+    dir: /etc/tls
+`)
+	assert.Equal(t, ":1235", ServerAddress())
 }
 
 func TestServerAddressDefault(t *testing.T) {
-	assert.Equal(t, ":8080", ServerAddress())
+	initTestConfig(t, "test.yaml", `
+auth:
+  mTLS:
+    dir: null
+`)
+	assert.Equal(t, ":8000", ServerAddress())
+
+	initTestConfig(t, "test.yaml", `
+auth:
+  mTLS:
+    dir: /etc/tls
+`)
+	assert.Equal(t, ":8443", ServerAddress())
 }
 
 func TestDebugTrue(t *testing.T) {
-	yaml := `debug: true`
-
-	cf := makeConfig(t, "debug.yaml", yaml)
-	InitWithPath(cf)
-
+	initTestConfig(t, "debug.yaml", `debug: true`)
 	assert.True(t, IsDebug())
 }
 
 func TestStorageConfigS3(t *testing.T) {
-	yaml := `
+	initTestConfig(t, "storage-s3.yaml", `
 storage:
   provider: s3
   s3:
     region: "us-east-1"
     access_key_id: "s3-access-key-123"
     secret_access_key: "s3-secret-key-123"
-`
-	cf := makeConfig(t, "storage-s3.yaml", yaml)
-	InitWithPath(cf)
+`)
 
 	storage := StorageConfig()
 	assert.Equal(t, string(types.StorageProviderS3), storage.Provider)
@@ -48,29 +67,25 @@ storage:
 }
 
 func TestStorageConfigGeneric(t *testing.T) {
-	yaml := `
+	initTestConfig(t, "storage-generic.yaml", `
 storage:
   provider: generic
   generic: {}
-`
-	cf := makeConfig(t, "storage-generic.yaml", yaml)
-	InitWithPath(cf)
+`)
 
 	storage := StorageConfig()
 	assert.Equal(t, string(types.StorageProviderGeneric), storage.Provider)
 }
 
 func TestDBConfig(t *testing.T) {
-	yaml := `
+	initTestConfig(t, "db.yaml", `
 db:
   provider: rqlite
   rqlite:
     baseUrl: "http://rqlite.local"
     username: "dbusername123"
     password: "dbpassword123"
-`
-	cf := makeConfig(t, "db.yaml", yaml)
-	InitWithPath(cf)
+`)
 
 	db := DBConfig()
 	assert.Equal(t, string(types.DBProviderRqlite), db.Provider)
@@ -79,41 +94,36 @@ db:
 	assert.Equal(t, "dbpassword123", db.Rqlite.Password)
 }
 
+func TestBearerAuthConfig(t *testing.T) {
+	initTestConfig(t, "bearer-auth.yaml", `
+auth:
+  bearer:
+    issuer_url: "http://example.com"
+    audience: "egress"
+`)
+	auth := BearerAuthConfig()
+	assert.Equal(t, "http://example.com", auth.IssuerURL)
+	assert.Equal(t, "egress", auth.Audience)
+}
+
 func TestBasicAuthConfig(t *testing.T) {
-	yaml := `
+	initTestConfig(t, "basic-auth.yaml", `
 auth:
   basic:
     username: "username123"
     password: "password123"
-`
-	cf := makeConfig(t, "basic-auth.yaml", yaml)
-	InitWithPath(cf)
+`)
 
 	auth := BasicAuthConfig()
 	assert.Equal(t, "username123", auth.Username)
 	assert.Equal(t, "password123", auth.Password)
 }
 
-func TestBearerAuthConfig(t *testing.T) {
-	yaml := `
-auth:
-  bearer:
-    issuer_url: "http://example.com"
-    audience: "egress"
-`
-	cf := makeConfig(t, "bearer-auth.yaml", yaml)
-	InitWithPath(cf)
-
-	auth := BearerAuthConfig()
-	assert.Equal(t, "http://example.com", auth.IssuerURL)
-	assert.Equal(t, "egress", auth.Audience)
-}
-
-func makeConfig(t *testing.T, fileName string, yaml string) string {
+func initTestConfig(t *testing.T, fileName string, yaml string) {
 	dir := t.TempDir()
-	cf := filepath.Join(dir, fileName)
+	configFilepath := filepath.Join(dir, fileName)
 
-	err := os.WriteFile(cf, []byte(yaml), 0644)
+	err := os.WriteFile(configFilepath, []byte(yaml), 0644)
 	require.NoError(t, err, "Unable to create test config file")
-	return cf
+	InitWithPath(configFilepath)
 }

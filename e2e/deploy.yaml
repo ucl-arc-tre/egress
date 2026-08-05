@@ -1,0 +1,22 @@
+# This manifest deploys the mTLS config required for mTLS of the client
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: egress-client
+  namespace: e2e
+  labels:
+    app.kubernetes.io/name: egress-client
+spec:
+  secretName: egress-client-tls-secret # pragma: allowlist secret
+  duration: 12h # 30 days
+  renewBefore: 6h # 10 days
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - client auth
+  dnsNames:
+    - localhost
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer

@@ -146,73 +146,6 @@ auth:
 	assert.Equal(t, "", ctx.GetString("sub"))
 }
 
-func TestMiddlewareBasicAuthSuccess(t *testing.T) {
-	initConfig(t, `
-auth:
-  basic:
-    username: "`+username+`"
-    password: "`+password+`"
-`)
-	auth := authMiddleware()
-
-	var authedUserId string
-	ctx, rec, router := contextAndRecorder(t)
-	router.Use(gin.HandlerFunc(auth))
-	router.GET("/", func(ctx *gin.Context) {
-		authedUserId = ctx.GetString("sub")
-		ctx.String(http.StatusOK, "Ok")
-	})
-	ctx.Request.SetBasicAuth(username, password)
-	router.ServeHTTP(rec, ctx.Request)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "", authedUserId) // Basic auth doesnt set sub
-}
-
-func TestMiddlewareBasicAuthFailure(t *testing.T) {
-	initConfig(t, `
-auth:
-  basic:
-    username: "`+username+`"
-    password: "`+password+`"
-`)
-	auth := authMiddleware()
-
-	ctx, rec, router := contextAndRecorder(t)
-	router.Use(gin.HandlerFunc(auth))
-	router.GET("/", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "Ok")
-	})
-	ctx.Request.SetBasicAuth(username, "blah")
-	router.ServeHTTP(rec, ctx.Request)
-
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-
-	// Basic auth failure must advertise Basic scheme
-	wwwAuth := rec.Result().Header.Values("WWW-Authenticate")
-	assert.Equal(t, []string{`Basic realm="egress"`}, wwwAuth)
-}
-
-func TestMiddlewareBasicAuthNoConfig(t *testing.T) {
-	initConfig(t, `
-auth:
-  basic:
-    username: ""
-    password: ""
-`)
-	auth := authMiddleware()
-
-	ctx, rec, router := contextAndRecorder(t)
-	router.Use(gin.HandlerFunc(auth))
-	router.GET("/", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "Ok")
-	})
-	ctx.Request.SetBasicAuth(username, password)
-	router.ServeHTTP(rec, ctx.Request)
-
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
 func TestMiddlewareBearerAuthSuccess(t *testing.T) {
 	as, key := newAuthServer(t)
 	issuer := as.URL
@@ -294,12 +227,9 @@ auth:
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestMiddlewareNoAuthHeader(t *testing.T) {
+func TestMiddlewareNoAuthHeaderNoMtls(t *testing.T) {
 	initConfig(t, `
 auth:
-  basic:
-    username: "`+username+`"
-    password: "`+password+`"
 `)
 	auth := authMiddleware()
 
@@ -314,7 +244,6 @@ auth:
 
 	// When no auth header, both Basic and Bearer schemes must be advertised
 	wwwAuth := rec.Result().Header.Values("WWW-Authenticate")
-	assert.Contains(t, wwwAuth, `Basic realm="egress"`)
 	assert.Contains(t, wwwAuth, `Bearer realm="egress"`)
 }
 

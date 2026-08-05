@@ -1,16 +1,16 @@
-{{- if eq .Values.storage.provider "generic" -}}
 {{- $name := .Release.Name -}}
 {{- $namespace := .Release.Namespace -}}
 
+{{- if eq .Values.storage.provider "generic" -}}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ $name }}
+  name: {{ $name }}-storage-generic
   namespace: {{ $namespace }}
   labels:
     "app.kubernetes.io/name": {{ $name }}
 spec:
-  secretName: {{ $name }}-tls-secret
+  secretName: {{ $name }}-storage-generic-tls-secret
   duration: {{ required "cert duration required" .Values.storage.generic.tls.certManager.duration }}
   renewBefore: {{ required "cert renewBefore required" .Values.storage.generic.tls.certManager.renewBefore }}
   privateKey:
@@ -26,5 +26,35 @@ spec:
     - {{ $name }}.{{ $namespace }}.svc.cluster.local
   issuerRef:
     name: {{ required "storage.generic.tls.issuerName is required" .Values.storage.generic.tls.issuerName }}
+    kind: ClusterIssuer
+{{- end }}
+---
+{{ if .Values.auth.mTLS.enabled -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    "app.kubernetes.io/name": {{ $name }}
+spec:
+  secretName: {{ $name }}-tls-secret
+  duration: {{ required "cert duration required" .Values.auth.mTLS.certManager.duration }}
+  renewBefore: {{ required "cert renewBefore required" .Values.auth.mTLS.certManager.renewBefore }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+  dnsNames:
+    - {{ $name }}
+    - {{ $name }}.{{ $namespace }}
+    - {{ $name }}.{{ $namespace }}.svc
+    - {{ $name }}.{{ $namespace }}.svc.cluster.local
+    {{- range .Values.auth.mTLS.certManager.additionalDNSNames}}
+    - {{ . }}
+    {{- end }}
+  issuerRef:
+    name: {{ required "auth.mTLS.issuerName is required" .Values.auth.mTLS.issuerName }}
     kind: ClusterIssuer
 {{- end }}

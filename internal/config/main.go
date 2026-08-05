@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	configPath  = "/etc/egress/config.yaml"
-	tlsCertDir  = "/etc/egress/tls"
-	defaultPort = "8080"
+	configPath       = "/etc/egress/config.yaml"
+	defaultHttpPort  = "8000"
+	defaultHttpsPort = "8443"
 
 	BaseURL                = "/v1"
 	ServerShutdownDuration = 30 * time.Second
@@ -47,20 +47,38 @@ func InitWithPath(path string) {
 }
 
 // Server address e.g. ":8080""
-// Load from env to match with Gin
 func ServerAddress() string {
-	return fmt.Sprintf(":%s", envOrDefault("PORT", defaultPort))
+	var port string
+	if MutualTLSEnabled() {
+		port = envOrDefault("HTTPS_PORT", defaultHttpsPort)
+	} else {
+		port = envOrDefault("HTTP_PORT", defaultHttpPort)
+
+	}
+	return fmt.Sprintf(":%s", port)
+}
+
+func HttpPort() string {
+	return envOrDefault("HTTP_PORT", defaultHttpPort)
 }
 
 func IsDebug() bool {
 	return k.Bool("debug")
 }
 
+func MutualTLSEnabled() bool {
+	return k.String("auth.mTLS.dir") != ""
+}
+
+func mutualTLSDir() string {
+	return k.String("auth.mTLS.dir")
+}
+
 func StorageConfig() StorageConfigBundle {
 	provider := k.String("storage.provider")
 	cfg := StorageConfigBundle{
 		Provider:   provider,
-		TLSCertDir: tlsCertDir,
+		TLSCertDir: k.String("storage.generic.mTLS.dir"),
 	}
 	if provider == string(types.StorageProviderS3) {
 		cfg.S3 = S3StorageConfig{

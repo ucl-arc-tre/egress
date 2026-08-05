@@ -19,8 +19,8 @@ FROM base AS dev
 
 # Expects the repo to be mounted in under /repo
 WORKDIR /repo
-RUN go install github.com/air-verse/air@latest
-CMD ["air", "--build.cmd", "go build -o bin/main cmd/main.go", "--build.bin", "./bin/main"]
+RUN go install github.com/air-verse/air@v1.65.3
+CMD ["air", "--build.cmd", "go build -o bin/main cmd/main.go", "--build.entrypoint", "./bin/main"]
 
 # --------------------------------------------------------
 FROM scratch AS release
@@ -31,7 +31,8 @@ COPY --from=base --chmod=700 --chown=1000:1000 /app/main main
 
 ENV GIN_MODE="release"
 ENV DEBUG="false"
-ENV PORT="8080"
+ENV HTTP_PORT="8000"
+ENV HTTPS_PORT="8443"
 
 USER user
 CMD ["./main"]

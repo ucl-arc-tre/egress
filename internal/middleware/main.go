@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ucl-arc-tre/egress/internal/config"
 	"github.com/ucl-arc-tre/egress/internal/openapi"
 )
 
@@ -20,14 +21,20 @@ func All() []openapi.MiddlewareFunc {
 func authMiddleware() openapi.MiddlewareFunc {
 	basicAuth := basicAuthenticator()
 	bearerAuth := bearerAuthenticator()
+	mtlsAuth := func(*gin.Context) {} // no-op auth handled at the transport layer
 
 	return func(ctx *gin.Context) {
 		var auth authFunction
 		authHeader := ctx.GetHeader("Authorization")
-		if strings.HasPrefix(authHeader, "Basic ") {
-			auth = basicAuth
-		} else if strings.HasPrefix(authHeader, "Bearer ") {
+		if strings.HasPrefix(authHeader, "Bearer ") {
 			auth = bearerAuth
+		} else if strings.HasPrefix(authHeader, "Basic ") {
+			auth = basicAuth
+		} else if config.MutualTLSEnabled() {
+			// if mTLS and bearer auth are both enabled then no additional
+			// middleware is required for the mTLS part, as it's handled at
+			// the transport layer - only the auth header needs to be parsed
+			auth = mtlsAuth
 		} else {
 			fail(ctx, []string{"Basic", "Bearer"}, "authentication required")
 			return
