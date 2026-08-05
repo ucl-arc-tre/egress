@@ -31,6 +31,9 @@ func authMiddleware() openapi.MiddlewareFunc {
 		} else if strings.HasPrefix(authHeader, "Basic ") {
 			auth = basicAuth
 		} else if config.MutualTLSEnabled() {
+			// if mTLS and bearer auth are both enabled then no additional
+			// middleware is required for the mTLS part, as it's handled at
+			// the transport layer - only the auth header needs to be parsed
 			auth = mtlsAuth
 		} else {
 			fail(ctx, []string{"Basic", "Bearer"}, "authentication required")
