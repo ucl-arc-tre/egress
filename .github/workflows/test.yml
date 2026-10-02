@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # version 6.5.0, See: https://github.com/actions/setup-go/releases
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Run unit tests
         run: make test-unit
@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # version 6.5.0, See: https://github.com/actions/setup-go/releases
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Install k3d
         run: |
